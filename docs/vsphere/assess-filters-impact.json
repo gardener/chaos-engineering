@@ -1,0 +1,40 @@
+{
+    "title": "Title goes here...",
+    "description": "Description goes here...",
+    "method": [
+        {
+            "type": "action",
+            "name": "assess-filters-impact",
+            "provider": {
+                "type": "python",
+                "module": "chaosgarden.vsphere.actions",
+                "func": "assess_filters_impact",
+                "secrets": ["cloud_provider"],                        # must refer to secrets authenticating against cloud provider; field name free
+                "arguments": {
+                    "zone": "${vsphere_zone}",                        # can be inline, but we recommend variable substitution; field/var name free
+                    "filters": "${vsphere_filters}"                   # can be inline, but we recommend variable substitution; field/var name free
+                }
+            }
+        }
+    ],
+    "configuration": {
+        "vsphere_vcenter_server": "...",                          # replace with your vSphere server hostname or IP;    field name free
+        "vsphere_nsxt_server": "...",                             # replace with your NSXT-T server hostname or IP;    field name free
+        "vsphere_insecure": false,                                # set to true, if TLS server certficate validation should be skipped
+        "vsphere_zone": "rot-lab-dell-1a",                        # replace with your zone;    field name free
+        "vsphere_resource_pool_prefix": "gardener-staging",       # replace with your resource pool prefix;  field name free
+        "vsphere_filters": {                                      # replace with your filters; field name free
+            "instances": {
+                "shoot_technical_id": "shoot--project--cluster",  # replace with your shoot_technical_id;    field name free
+            }
+        }
+    },
+    "secrets": {
+        "cloud_provider": {
+            "vsphereUsername": "...",
+            "vspherePassword": "...",
+            "nsxtPassword": "...",
+            "nsxtUsername": "...",
+        }
+    }
+}

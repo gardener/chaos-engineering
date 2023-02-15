@@ -4,3 +4,4 @@ resources/
 *.log
 journal.json
 __pycache__/
+**/local.py
