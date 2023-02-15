@@ -1,0 +1,15 @@
+{
+    "title": "Title goes here...",
+    "description": "Description goes here...",
+    "method": [
+        {
+            "type": "action",
+            "name": "wait-for-confirmation",
+            "provider": {
+                "type": "python",
+                "module": "chaosgarden.human.actions",
+                "func": "wait_for"
+            }
+        }
+    ]
+}

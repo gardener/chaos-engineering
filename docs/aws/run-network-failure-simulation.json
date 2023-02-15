@@ -1,0 +1,57 @@
+{
+    "title": "Title goes here...",
+    "description": "Description goes here...",
+    "method": [
+        {
+            "type": "action",
+            "name": "run-network-failure-simulation",
+            "provider": {
+                "type": "python",
+                "module": "chaosgarden.aws.actions",
+                "func": "run_network_failure_simulation",
+                "secrets": ["cloud_provider"],                                    # must refer to secrets authenticating against cloud provider; field name free
+                "arguments": {
+                    "mode": "total",                                              # keep `total` (default) or replace with `ingress` or `egress`
+                    "zone": "${aws_zone}",                                        # can be inline, but we recommend variable substitution; field/var name free
+                    "filters": "${aws_filters}"                                   # can be inline, but we recommend variable substitution; field/var name free
+                    "duration": 60                                                # replace with time in seconds this action shall run
+                }
+            }
+        }
+    ],
+    "rollbacks": [
+        {
+            "type": "action",
+            "name": "rollback-network-failure-simulation",
+            "provider": {
+                "type": "python",
+                "module": "chaosgarden.aws.actions",
+                "func": "rollback_network_failure_simulation",
+                "secrets": ["cloud_provider"],                                    # must refer to secrets authenticating against cloud provider; field name free
+                "arguments": {
+                    "mode": "total",                                              # keep `total` (default) or replace with `ingress` or `egress`
+                    "zone": "${aws_zone}",                                        # can be inline, but we recommend variable substitution; field/var name free
+                    "filters": "${aws_filters}"                                   # can be inline, but we recommend variable substitution; field/var name free
+                }
+            }
+        }
+    ],
+    "configuration": {
+        "aws_region": "world-1",                                                  # replace with your region;  field name fixed
+        "aws_zone": "world-1a",                                                   # replace with your zone;    field name free
+        "aws_filters": {                                                          # replace with your filters; field name free
+            "vpcs": [                                                             # optional VPC filter;       field name fixed
+                {
+                    "Name": "tag-key",
+                    "Values": ["kubernetes.io/cluster/shoot--project--cluster"]   # replace with your kubernetes cluster tag
+                }
+            ]
+        }
+    },
+    "secrets": {
+        "cloud_provider": {
+            "aws_access_key_id": "...",                                           # replace with your credentials; field name fixed
+            "aws_secret_access_key": "..."                                        #    "
+        }
+    }
+}

@@ -1,0 +1,48 @@
+{
+    "title": "Title goes here...",
+    "description": "Description goes here...",
+    "method": [
+        {
+            "type": "action",
+            "name": "run-compute-failure-simulation",
+            "provider": {
+                "type": "python",
+                "module": "chaosgarden.gcp.actions",
+                "func": "run_compute_failure_simulation",
+                "secrets": ["cloud_provider"],           # must refer to secrets authenticating against cloud provider; field name free
+                "arguments": {
+                    "mode": "terminate",                 # keep `terminate` (default) or replace with `restart`
+                    "min_runtime": 0,                    # keep `0` (immediate) or replace with number of seconds instance must run at least
+                    "max_runtime": 0,                    # keep `0` (immediate) or replace with number of seconds instance may run at most
+                    "zone": "${gcp_zone}",               # can be inline, but we recommend variable substitution; field/var name free
+                    "filters": "${gcp_filters}"          # can be inline, but we recommend variable substitution; field/var name free
+                    "duration": 60                       # replace with time in seconds this action shall run
+                }
+            }
+        }
+    ],
+    "configuration": {
+        "gcp_zone": "world1-a",                          # replace with your zone;    field name free
+        "gcp_filters": {                                 # replace with your filters; field name free
+            "instances":                                 # optional instance filter;  field name fixed
+                        "labels.name=cluster AND labels.node_kubernetes_io_role=node AND labels.worker_gardener_cloud_pool:*"
+                                                         # replace with your kubernetes cluster name
+        }
+    },
+    "secrets": {
+        "cloud_provider": {
+            "service_account_info": {                    # replace with your credentials; field name fixed
+                "type": "service_account",
+                "project_id": "...",
+                "private_key_id": "...",
+                "private_key": "...",
+                "client_email": "...",
+                "client_id": "...",
+                "auth_uri": "...",
+                "token_uri": "...",
+                "auth_provider_x509_cert_url": "...",
+                "client_x509_cert_url": "..."
+            }
+        }
+    }
+}

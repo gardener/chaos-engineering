@@ -1,0 +1,41 @@
+{
+    "title": "Title goes here...",
+    "description": "Description goes here...",
+    "method": [
+        {
+            "type": "action",
+            "name": "run-network-failure-simulation",
+            "provider": {
+                "type": "python",
+                "module": "chaosgarden.garden.actions",
+                "func": "run_cloud_provider_network_failure_simulation",
+                "arguments": {
+                    "mode": "total",                     # keep `total` (default) or replace with `ingress` or `egress`
+                    "zone": 0                            # replace with your zone index (alphabetically ordered, starting at 0)
+                    "duration": 60                       # replace with time in seconds this action shall run
+                }
+            }
+        }
+    ],
+    "rollbacks": [
+        {
+            "type": "action",
+            "name": "rollback-network-failure-simulation",
+            "provider": {
+                "type": "python",
+                "module": "chaosgarden.garden.actions",
+                "func": "rollback_cloud_provider_network_failure_simulation",
+                "arguments": {
+                    "mode": "total",                     # keep `total` (default) or replace with `ingress` or `egress`
+                    "zone": 0                            # replace with your zone index (alphabetically ordered, starting at 0)
+                }
+            }
+        }
+    ],
+    "configuration": {
+        "garden": {
+            "project": "...",                            # replace with your project name; field name fixed
+            "shoot":   "..."                             # replace with your cluster name; field name fixed
+        }
+    }
+}
