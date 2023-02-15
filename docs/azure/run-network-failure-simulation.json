@@ -1,0 +1,57 @@
+{
+    "title": "Title goes here...",
+    "description": "Description goes here...",
+    "method": [
+        {
+            "type": "action",
+            "name": "run-network-failure-simulation",
+            "provider": {
+                "type": "python",
+                "module": "chaosgarden.azure.actions",
+                "func": "run_network_failure_simulation",
+                "secrets": ["cloud_provider"],                                      # must refer to secrets authenticating against cloud provider; field name free
+                "arguments": {
+                    "mode": "total",                                                # keep `total` (default) or replace with `ingress` or `egress`
+                    "zone": "${azure_zone}",                                        # can be inline, but we recommend variable substitution; field/var name free
+                    "filters": "${azure_filters}",                                  # can be inline, but we recommend variable substitution; field/var name free
+                    "duration": 60                                                  # replace with time in seconds this action shall run
+                }
+            }
+        }
+    ],
+    "rollbacks": [
+        {
+            "type": "action",
+            "name": "rollback-network-failure-simulation",
+            "provider": {
+                "type": "python",
+                "module": "chaosgarden.azure.actions",
+                "func": "rollback_network_failure_simulation",
+                "secrets": ["cloud_provider"],                                      # must refer to secrets authenticating against cloud provider; field name free
+                "arguments": {
+                    "mode": "total",                                                # keep `total` (default) or replace with `ingress` or `egress`
+                    "zone": "${azure_zone}",                                        # can be inline, but we recommend variable substitution; field/var name free
+                    "filters": "${azure_filters}",                                  # can be inline, but we recommend variable substitution; field/var name free
+                }
+            }
+        }
+    ],
+    "configuration": {
+        "azure_region": "world-1",                                                  # replace with your region;          field name fixed
+        "azure_zone": "1",                                                          # replace with your zone;            field name free
+        "azure_subscription_id": "...",                                             # replace with your subscription id; field name fixed
+        "azure_resource_group": "shoot--project--cluster",                          # replace with your resource group;  field name fixed
+        "azure_filters": {                                                          # replace with your filters;         field name free
+            "virtual_machines":                                                     # optional virtual machine filter;   field name fixed
+              "where tags contains \"shoot--project--cluster\""                     # replace with your kubernetes cluster tag
+        }
+    },
+    "secrets": {
+        "cloud_provider": {
+            "azure_cloud": "AZURE_PUBLIC_CLOUD",                                    # replace with your cloud;       field name fixed
+            "client_id": "...",                                                     # replace with your credentials; field name fixed
+            "client_secret": "...",                                                 #    "
+            "tenant_id": "..."                                                      #    "
+        }
+    }
+}

@@ -1,0 +1,32 @@
+{
+    "title": "Title goes here...",
+    "description": "Description goes here...",
+    "method": [
+        {
+            "type": "action",
+            "name": "run-control-plane-pod-failure-simulation",
+            "provider": {
+                "type": "python",
+                "module": "chaosgarden.garden.actions",
+                "func": "run_control_plane_pod_failure_simulation",
+                "arguments": {
+                    "min_runtime": 0,                    # keep `0` (immediate) or replace with number of seconds pod must run at least
+                    "max_runtime": 0,                    # keep `0` (immediate) or replace with number of seconds pod may run at most
+                    "grace_period": 0,                   # keep `0` (immediate) or replace with number of seconds pod may take to terminate
+                    "zone": 0,                           # replace with your zone index (alphabetically ordered, starting at 0)
+                    "node_label_selector": null,         # replace with your node label selector
+                    "pod_label_selector": null,          # replace with your pod label selector
+                    "pod_metadata_selector": null,       # replace with your pod metadata your selector
+                    "pod_owner_selector": null,          # replace with your pod owner selector
+                    "duration": 60                       # replace with time in seconds this action shall run
+                }
+            }
+        }
+    ],
+    "configuration": {
+        "garden": {
+            "project": "...",                            # replace with your project name; field name fixed
+            "shoot":   "..."                             # replace with your cluster name; field name fixed
+        }
+    }
+}
