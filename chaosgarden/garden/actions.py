@@ -420,7 +420,9 @@ def resolve_cloud_provider_simulation(zone, configuration, secrets) -> Tuple[Cal
             'project_name': base64.b64decode(credentials['tenantName']).decode('utf-8')}
     elif cloud_provider == 'vsphere':
         filters = {
-            'instances': [{'shoot_technical_id': f'{shoot.status.technicalID}'}]}
+            'custom_attributes': {"mcm.gardener.cloud/cluster": f'{shoot.status.technicalID}'},
+            'resource_pools': [cloud_profile.providerConfig.namePrefix + '-{zone}'],
+            'clusters': []}
         region = None
         for r in cloud_profile.providerConfig.regions:
             if r.name == shoot.spec.region:
@@ -429,16 +431,15 @@ def resolve_cloud_provider_simulation(zone, configuration, secrets) -> Tuple[Cal
         if not region:
             raise ValueError(f'region {shoot.spec.region} not found in cloud profile')
         configuration = {
-            'vsphere_region': shoot.spec.region,
             'vsphere_vcenter_server': region.vsphereHost,
+            'vsphere_vcenter_insecure': region.vsphereInsecureSSL,
             'vsphere_nsxt_server': region.nsxtHost,
-            'vsphere_insecure': region.vsphereInsecureSSL or region.nsxtInsecureSSL,
-            'vsphere_resource_pool_prefix': cloud_profile.providerConfig.namePrefix }
+            'vsphere_nsxt_insecure': region.nsxtInsecureSSL}
         secrets = {
-            'vsphereUsername': base64.b64decode(credentials['vsphereUsername']).decode('utf-8'),
-            'vspherePassword': base64.b64decode(credentials['vspherePassword']).decode('utf-8'),
-            'nsxtUsername': base64.b64decode(credentials['nsxtUsername']).decode('utf-8'),
-            'nsxtPassword': base64.b64decode(credentials['nsxtPassword']).decode('utf-8')}
+            'vsphere_username': base64.b64decode(credentials['vsphereUsername']).decode('utf-8'),
+            'vsphere_password': base64.b64decode(credentials['vspherePassword']).decode('utf-8'),
+            'nsxt_username': base64.b64decode(credentials['nsxtUsername']).decode('utf-8'),
+            'nsxt_password': base64.b64decode(credentials['nsxtPassword']).decode('utf-8')}
     else:
         raise ValueError(f'Cloud provider (was {cloud_provider}) unknown/not supported!')
 

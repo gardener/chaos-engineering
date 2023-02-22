@@ -37,7 +37,19 @@ Module: [`chaosgarden.vsphere.actions`](/chaosgarden/vsphere/actions.py)
 
 ### Cloud Provider Filters
 
-Please consult your cloud provider documentation for the exact filter syntax (not interpreted by `chaosgarden`).
+The instances filters are relying on custom attributes and resource pool or compute cluster names.
+It is assumed that each VM has a K8s cluster specific custom attribute and the VMs are located in one or several resource pools or compute clusters.
+The names for `resource_pools` and `clusters` (compute clusters) can contain a `{zone}` pattern, which will be replaced by the actual zone name.
+
+Example:
+
+```json
+            "instances": {
+                "custom_attributes": {"my.group/cluster": "shoot--project--cluster"},
+                "resource_pools": ["gardener-{zone}"],
+                "clusters": [],
+            }
+```
 
 ### Configuration
 
@@ -45,18 +57,17 @@ It requires the following mandatory [configuration](https://chaostoolkit.org/ref
 
 - `vsphere_vcenter_server`: Hostname or IP of vSphere server
 - `vsphere_nsxt_server`: Hostname of IP of NSX-T server
-- `vsphere_insecure`: set to false, if TLS credentials should not be verified
-- `vsphere_resource_pool_prefix`: the prefix used for the zone resource pool names
-- `vsphere_zone`: the vsphere zone to run the actions on (a zone as defined by the Gardener cloud profile)
+- `vsphere_vcenter_insecure`: set to true, if TLS credentials of vSphere server should not be verified
+- `vsphere_nsxt_insecure`: set to true, if TLS credentials of NSX-T server should not be verified
 
 ### Secrets
 
 It requires the following mandatory [secret](https://chaostoolkit.org/reference/api/experiment/#secrets) fields:
 
-- `vsphereUsername`: User name for vSphere vCenter
-- `vspherePassword`: User password for vSphere vCenter
-- `nsxtUsername`: User name for NSX-T
-- `nsxtPassword`: User password for NSX-T
+- `vsphere_username`: User name for vSphere vCenter
+- `vsphere_password`: User password for vSphere vCenter
+- `nsxt_username`: User name for NSX-T
+- `nsxt_password`: User password for NSX-T
 
 ## Examples
 

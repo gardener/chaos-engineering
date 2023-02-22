@@ -17,7 +17,7 @@ Read more on how to simulate *compute* and *network* outages for these cloud pro
 - **Module: [`azure`](/docs/azure/readme.md)**
 - **Module: [`gcp`](/docs/gcp/readme.md)**
 - **Module: [`openstack`](/docs/openstack/readme.md)**
-- **Module: `vsphere`** (VMware vSphere not yet supported)
+- **Module: [`vsphere`](/docs/vsphere/readme.md)**
 - **Module: `metal`** (Gardener on Metal is not yet supported)
 
 The API, parameterization, and implementation is as homogeneous as possible across the different cloud providers, so that consumers of these packages have only minimal effort. However, if you are a Gardener user, please read on and use the [Gardener-specific module](#gardener) instead, which makes it even easier and safer for you.
@@ -44,11 +44,13 @@ Finally, there is a tiny additional module that is primarily useful for human in
 
 ## Installation, Usage, and Configuration
 
-This package was developed and tested with Python 3.9+. It's not yet available on [PyPI](https://pypi.org), but this is planned eventually. For now, you will have to clone this repository and add it to your `PYTHONPATH`:
+This package was developed and tested with Python 3.9+. It's not yet available on [PyPI](https://pypi.org), but this is planned eventually. For now, you will have to clone this repository and add it to your `PYTHONPATH`. You may want to [create a virtual environment](https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/#creating-a-virtual-environment) before installing the requirements with `pip`.
 
 ``` sh
 git clone https://github.com/gardener/chaos-engineering gardener-chaos-engineering
 cd gardener-chaos-engineering
+## if vsphere support is needed run the following line *before* installing the requirements
+# python -m pip install --upgrade git+https://github.com/vmware/vsphere-automation-sdk-python.git
 python -m pip install -r requirements.txt
 export PYTHONPATH="$PYTHONPATH:$(pwd)"
 ```

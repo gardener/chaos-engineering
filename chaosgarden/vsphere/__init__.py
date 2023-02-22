@@ -8,6 +8,7 @@ from chaosgarden.vsphere import pchelper
 
 from vmware.vapi.vsphere.client import create_vsphere_client, VsphereClient
 from com.vmware.vcenter_client import VM
+from com.vmware.vcenter import vm_client
 from pyVmomi import vim
 from pyVim.connect import SmartConnect
 from vmware.vapi.lib import connect
@@ -21,6 +22,7 @@ from com.vmware.nsx_policy.model_client import (Group,GroupListResult,Condition,
                                                 NestedExpression,ExternalIDExpression,
                                                 SecurityPolicy,SecurityPolicyListResult,Rule)
 from vmware.vapi.bindings.struct import VapiStruct
+from com.vmware.vapi.std.errors_client import NotFound
 
 def get_unverified_context():
     """
@@ -52,14 +54,14 @@ def vsphere_vcenter_client(configuration: Configuration, secrets: Secrets)-> Vsp
     if not 'cloud_provider' in secrets:
         raise ValueError(f'Secrets with keys ' + ', '.join(secrets.keys()) + 'unknown/not supported!')
     secret = secrets['cloud_provider']
-    if not 'vsphereUsername' in secret or not 'vspherePassword' in secret:
+    if not 'vsphere_username' in secret or not 'vsphere_password' in secret:
         raise ValueError(f'Secrets with keys ' + ', '.join(secrets.keys()) + 'unknown/not supported!')
-    username = secret['vsphereUsername']
-    password = secret['vspherePassword']
+    username = secret['vsphere_username']
+    password = secret['vsphere_password']
     if not 'vsphere_vcenter_server' in configuration:
         raise ValueError(f'Configuration with keys ' + ', '.join(configuration.keys()) + 'unknown/not supported!')
     server = configuration['vsphere_vcenter_server']
-    skip_verification = 'vsphere_insecure' in configuration and configuration['vsphere_insecure']
+    skip_verification = configuration.get('vsphere_vcenter_insecure')
     session = get_unverified_session() if skip_verification else None
     return create_vsphere_client(server=server, username=username, password=password, session=session)
 
@@ -68,36 +70,104 @@ def vsphere_vcenter_service_instance(configuration: Configuration, secrets: Secr
     Get service instance client to vCenter SOAP API
     """
     if not 'cloud_provider' in secrets:
-        raise ValueError(f'Secrets with keys ' + ', '.join(secrets.keys()) + 'unknown/not supported!')
+        raise ValueError(f'Secrets with keys ' + ', '.join(secrets.keys()) + ' unknown/not supported!')
     secret = secrets['cloud_provider']
-    if not 'vsphereUsername' in secret or not 'vspherePassword' in secret:
-        raise ValueError(f'Secrets with keys ' + ', '.join(secrets.keys()) + 'unknown/not supported!')
-    username = secret['vsphereUsername']
-    password = secret['vspherePassword']
+    if not 'vsphere_username' in secret or not 'vsphere_password' in secret:
+        raise ValueError(f'Secrets with keys ' + ', '.join(secrets.keys()) + ' unknown/not supported!')
+    username = secret['vsphere_username']
+    password = secret['vsphere_password']
     if not 'vsphere_vcenter_server' in configuration:
         raise ValueError(f'Configuration with keys ' + ', '.join(configuration.keys()) + 'unknown/not supported!')
     server = configuration['vsphere_vcenter_server']
-    skip_verification = 'vsphere_insecure' in configuration and configuration['vsphere_insecure']
+    skip_verification = configuration.get('vsphere_vcenter_insecure')
     return SmartConnect(host=server,user=username,pwd=password,disableSslCertValidation=skip_verification)
 
-def list_instances(client: VsphereClient, zone: str, resource_pool_prefix: str, shoot_technical_id: str):
-    zone_resource_pool_name = f'{resource_pool_prefix}-{zone}'
-    resource_pool = get_resource_pool(client, zone_resource_pool_name)
-    if not resource_pool:
-        raise ValueError(f'resource pool {zone_resource_pool_name} not found')
-    prefix = f'{shoot_technical_id}-'
-    vms = client.vcenter.VM.list(VM.FilterSpec(resource_pools=set([resource_pool.resource_pool])))
-    return [vm for vm in vms if vm.name.startswith(prefix)]
+class VirtualMachineCopy:
+    def __init__(self, vm: vim.VirtualMachine):
+        self.name = vm.name
+        self.instanceUuid = vm.config.instanceUuid
+        self.powerState = vm.runtime.powerState
+        self.bootTime = vm.runtime.bootTime
+        self._moId = vm._moId
 
-def stop_instances(client: VsphereClient, vms: list):
+    def __repr__(self):
+        return f'VirtualMachine({self._moId},{self.name},{self.instanceUuid})'
+
+def list_instances_copy(si: vim.ServiceInstance, zone: str, filter: Dict[str, any])->List[VirtualMachineCopy]:
+    """
+    Retrieve list with static fields (without potential subsequent SOAP calls)
+    """
+    results = []
+    for vm in list_instances(si, zone, filter):
+        try:
+            copy = VirtualMachineCopy(vm)
+            results.append(copy)
+        except Exception as e:
+            logger.debug(f'retrieving VirtualMachine details failed: {e}')
+            pass
+    return results
+
+def list_instances(si: vim.ServiceInstance, zone: str, filter: Dict[str, any])->List[vim.VirtualMachine]:
+    zone_resource_pools = [name.format(zone=zone) for name in filter['resource_pools']]
+    pools = pchelper.search_resource_pools_by_names(si, zone_resource_pools)
+    zone_clusters = [name.format(zone=zone) for name in filter['clusters']]
+    clusters = pchelper.search_clusters_by_names(si, zone_clusters)
+    if len(pools) == 0 and len(clusters) == 0:
+        raise ValueError(f'no resource pools {zone_resource_pools} and no clusters {zone_clusters} found')
+
+    custom_attrs = {}
+    for keyname, value in filter['custom_attributes'].items():
+        found = False
+        for fieldDef in si.content.customFieldsManager.field:
+            if fieldDef.name == keyname:
+                custom_attrs[fieldDef.key] = value
+                found = True
+                break
+        if not found:
+            raise ValueError(f'custom field def {keyname} not found')
+
+    for cluster in clusters:
+        pools.append(cluster.resourcePool)
+
+    pools = _include_child_pools(pools)
+
+    def matches_custom_attrs(vm: vim.VirtualMachine) -> bool:
+        for key, value in custom_attrs.items():
+            found = False
+            for cv in vm.customValue:
+                if cv.key == key:
+                    if cv.value != value:
+                        return False
+                    found = True
+                    break
+            if not found:
+                return False
+        return True
+
+    vms = []
+    for pool in pools:
+        for vm in pool.vm:
+            if matches_custom_attrs(vm):
+                vms.append(vm)
+    return vms
+
+def _include_child_pools(pools):
+    result = pools[:]
+    for pool in pools:
+        result += _include_child_pools(pool.resourcePool)
+    return result
+
+def delete_instances(client: VsphereClient, vms: List[vim.VirtualMachine]):
     for vm in vms:
         logger.info(f'stopping VM {vm.name}')
-        client.vcenter.vm.Power.stop(vm.vm)
+        client.vcenter.vm.Power.stop(vm._moId)
+        logger.info(f'deleting VM {vm.name}')
+        client.vcenter.VM.delete(vm._moId)
 
-def start_instances(client: VsphereClient, vms: list):
+def reset_instances(client: VsphereClient, vms: List[vim.VirtualMachine]):
     for vm in vms:
-        logger.info(f'starting VM {vm.name}')
-        client.vcenter.vm.Power.start(vm.vm)
+        logger.info(f'resetting VM {vm.name}')
+        client.vcenter.vm.Power.reset(vm._moId)
 
 def get_resource_pool(client: VsphereClient, name: str)-> str:
     pools = client.vcenter.ResourcePool.list()
@@ -122,14 +192,14 @@ def vsphere_nsxt_client(configuration: Configuration, secrets: Secrets, is_polic
     if not 'cloud_provider' in secrets:
         raise ValueError(f'Secrets with keys ' + ', '.join(secrets.keys()) + 'unknown/not supported!')
     secret = secrets['cloud_provider']
-    if not 'nsxtUsername' in secret or not 'nsxtUsername' in secret:
-        raise ValueError(f'Secrets with keys ' + ', '.join(secrets.keys()) + 'unknown/not supported!')
-    username = secret['nsxtUsername']
-    password = secret['nsxtPassword']
+    if not 'nsxt_username' in secret or not 'nsxt_password' in secret:
+        raise ValueError(f'Secrets with keys ' + ', '.join(secrets.keys()) + ' unknown/not supported!')
+    username = secret['nsxt_username']
+    password = secret['nsxt_password']
     if not 'vsphere_nsxt_server' in configuration:
         raise ValueError(f'Configuration with keys ' + ', '.join(configuration.keys()) + 'unknown/not supported!')
     server = configuration['vsphere_nsxt_server']
-    skip_verification = 'vsphere_insecure' in configuration and configuration['vsphere_insecure']
+    skip_verification = configuration.get('vsphere_nsxt_insecure')
     session = get_unverified_session() if skip_verification else requests.session()
     nsx_url = f'https://{server}:443'
     connector = connect.get_requests_connector(session=session, msg_protocol='rest', url=nsx_url)
@@ -154,29 +224,6 @@ def nsxt_create_infra_domain_group(client: ApiClient, group_id: str, expression:
     )
     client.infra.domains.Groups.patch(domain_id="default", group_id=group_id, group=group)
 
-def nsxt_build_expression_shoot_vm_name_filter(shoot_technical_id: str, zone_technical_id: str)->VapiStruct:
-    """
-    Create filter expression based on shoot_technical_id and zone_technical_id (e.g. like 'z1')
-    """
-    name_condition = Condition(
-        member_type=Condition.MEMBER_TYPE_VIRTUALMACHINE,
-        key=Condition.KEY_COMPUTERNAME,
-        operator=Condition.OPERATOR_STARTSWITH,
-        value=f'{shoot_technical_id}-',
-    )
-    zone_name_condition = Condition(
-        member_type=Condition.MEMBER_TYPE_VIRTUALMACHINE,
-        key=Condition.KEY_COMPUTERNAME,
-        operator=Condition.OPERATOR_CONTAINS,
-        value=f'-{zone_technical_id}-',
-    )
-    conj = ConjunctionOperator(
-        conjunction_operator=ConjunctionOperator.CONJUNCTION_OPERATOR_AND,
-    )
-    return NestedExpression(
-        expressions=[name_condition,conj,zone_name_condition]
-    )
-
 def nsxt_build_expression_vm_uuids(vm_uuids: List[str])->VapiStruct:
     """
     Create filter expresions by virtual machine UUIDs
@@ -193,8 +240,11 @@ def nsxt_list_security_policies(client: ApiClient)->SecurityPolicyListResult:
     #domains_client.SecurityPolicies.list()
     return client.infra.domains.SecurityPolicies.list(domain_id="default")
 
-def nsxt_get_security_policies(client: ApiClient, policy_id: str)->SecurityPolicy:
-    return client.infra.domains.SecurityPolicies.get(domain_id="default",security_policy_id=policy_id)
+def nsxt_get_security_policy(client: ApiClient, policy_id: str)->SecurityPolicy:
+    try:
+        return client.infra.domains.SecurityPolicies.get(domain_id="default",security_policy_id=policy_id)
+    except NotFound:
+        return None
 
 def nsxt_create_security_policy(client: ApiClient, policy_id: str, policy: SecurityPolicy):
     #domains_client.SecurityPolicies.patch
@@ -206,7 +256,7 @@ def nsxt_build_security_policy(group_id: str, add_ingress_rule: bool = True, add
     rules = []
     if add_ingress_rule:
         rules.append(Rule(
-            id="ingress",
+            id="block-ingress",
             source_groups=any,
             destination_groups=target,
             action=Rule.ACTION_DROP,
@@ -216,7 +266,7 @@ def nsxt_build_security_policy(group_id: str, add_ingress_rule: bool = True, add
             scope=any))
     if add_egress_rule:
         rules.append(Rule(
-            id="egress",
+            id="block-egress",
             source_groups=target,
             destination_groups=any,
             action=Rule.ACTION_DROP,

@@ -1,5 +1,6 @@
 import random
 import time
+import hashlib
 from collections import defaultdict
 from datetime import datetime, timedelta
 from threading import Thread
@@ -14,17 +15,15 @@ from chaosgarden.util import (norm_filters, validate_duration, validate_mode,
                               validate_zone)
 from chaosgarden.util.terminator import Terminator
 from chaosgarden.util.threading import launch_thread
-from chaosgarden.vsphere import (vsphere_vcenter_client,vsphere_vcenter_service_instance,list_instances,
-                                 get_virtualmachines,stop_instances,start_instances,
+from chaosgarden.vsphere import (vsphere_vcenter_client,vsphere_vcenter_service_instance,list_instances_copy,
+                                 delete_instances,reset_instances,
                                  vsphere_nsxt_client,nsxt_delete_security_policy,nsxt_delete_infra_domain_group,
-                                 nsxt_create_infra_domain_group,nsxt_create_security_policy,
+                                 nsxt_create_infra_domain_group,nsxt_create_security_policy,nsxt_get_security_policy,
                                  nsxt_build_expression_vm_uuids,nsxt_build_security_policy)
 
-ZONE_TAG_NAME = 'gardener.cloud/chaos/zone'
-ORIGINAL_NETWORK_ACL_ASSOCIATIONS_TAG_NAME = 'gardener.cloud/chaos/original-network-acl-associations'
+SECURITY_POLICY_NAME_LAMBDA = lambda zone, filter, mode: f'chaosgarden-block-{mode}-{hashlib.md5(str(filter).encode("utf-8")).hexdigest()[:-16]}-{zone}'
 ASSUMED_COMPUTE_TERMINATION_TIME_IN_SECONDS = 20
 ASSUMED_COMPUTE_RESTART_TIME_IN_SECONDS = 20
-
 
 __all__ = [
     'assess_filters_impact',
@@ -51,14 +50,13 @@ def assess_filters_impact(
     # report impact the given zone and filters will have
     logger.info(f'Validating client credentials and listing probably impacted instances and/or networks with the given arguments {zone=} and {filters=}:')
     client = vsphere_vcenter_client(configuration = configuration, secrets = secrets)
+    si = vsphere_vcenter_service_instance(configuration=configuration,secrets=secrets)
     instances_filter = filters['instances']
     validate_instance_filter(instances_filter)
-    prefix = get_resource_pool_prefix(configuration)
-    shoot_id = get_shoot_technical_id(instances_filter)
-    instances = list_instances(client, zone=zone, resource_pool_prefix=prefix,shoot_technical_id=shoot_id)
+    instances = list_instances_copy(si, zone, instances_filter)
     logger.info(f'{len(instances)} instance(s) would be impacted:')
     for instance in sorted(instances, key = lambda instance: instance.name):
-        logger.info(f'- {instance.name} {instance.power_state}')
+        logger.info(f'- {instance.name} {instance.powerState}')
 
 
 #############################################
@@ -94,48 +92,31 @@ def run_compute_failure_simulation(
     instances_filter = filters['instances']
     validate_instance_filter(instances_filter)
     client = vsphere_vcenter_client(configuration = configuration, secrets = secrets)
-    prefix = get_resource_pool_prefix(configuration)
-    shoot_id = get_shoot_technical_id(instances_filter)
-
+    si = vsphere_vcenter_service_instance(configuration=configuration,secrets=secrets)
 
     # distinguish modes
     if mode == 'terminate':
-        eligible = lambda instance: instance.power_state not in ['POWERED_OFF'] # do not bother if already terminating or terminated (which stay around in AWS for quite some time anyway)
-        operation = stop_instances
+        eligible = lambda instance: instance.powerState not in ['poweredOff']
+        operation = delete_instances
         reschedule_timedelta = timedelta(seconds = ASSUMED_COMPUTE_TERMINATION_TIME_IN_SECONDS) # back-off, in case termination fails silently
         need_boot_time = max_runtime > 0
     if mode == 'restart':
-        eligible = lambda instance: instance.power_state not in ['POWERED_ON']
-        operation = start_instances
+        eligible = lambda instance: instance.powerState not in ['poweredOff']
+        operation = reset_instances
         reschedule_timedelta = timedelta(seconds = ASSUMED_COMPUTE_RESTART_TIME_IN_SECONDS + random.randint(min_runtime, max_runtime)) # next restart
         need_boot_time = False
 
     # mess up instances continuously until terminated
-    logger.info(f'Messing up instances matching {instances_filter["shoot_technical_id"]} in zone {zone} ({mode} between {min_runtime}s and {max_runtime}s).')
+    logger.info(f'Messing up instances matching {instances_filter} in zone {zone} ({mode} between {min_runtime}s and {max_runtime}s).')
     schedule_by_name = {}
     terminator = Terminator(duration)
     while not terminator.is_terminated():
         try:
-            listed_instances = list_instances(client, zone=zone, resource_pool_prefix=prefix,shoot_technical_id=shoot_id)
-            if need_boot_time:
-                names_to_fetch = []
-                for instance in listed_instances:
-                    if eligible(instance) and instance.name not in schedule_by_name:
-                        names_to_fetch.append(instance.name)
-                if len(names_to_fetch) > 0:
-                    # REST API vmware.vapi.vsphere.client does not provide runtime information
-                    # therefore need to use SOAP API to collect boot times.
-                    si = vsphere_vcenter_service_instance(configuration = configuration, secrets = secrets)
-                    result = get_virtualmachines(service_instance=si, vm_name_set=set(names_to_fetch))
-
             instances = []
-            for instance in listed_instances:
+            for instance in list_instances_copy(si, zone, instances_filter):
                 if eligible(instance):
                     if instance.name not in schedule_by_name:
-                        if need_boot_time and instance.name in result:
-                            schedule_by_name[instance.name] = result[instance.name].runtime.bootTime.astimezone() + timedelta(seconds = random.randint(min_runtime, max_runtime))
-                        else: 
-                            schedule_by_name[instance.name] = datetime.now().astimezone() - timedelta(seconds = 1)
+                        schedule_by_name[instance.name] = instance.bootTime.astimezone() + timedelta(seconds = random.randint(min_runtime, max_runtime))
                         logger.info(f'Scheduled instance to {mode}: {instance.name} at {schedule_by_name[instance.name]}')
                     if datetime.now().astimezone() > schedule_by_name[instance.name]:
                         schedule_by_name[instance.name] = datetime.now().astimezone() + reschedule_timedelta
@@ -169,21 +150,23 @@ def run_network_failure_simulation(
         configuration: Configuration = None,
         secrets: Secrets = None):
 
-    # don't rollback any left-overs from hard-aborted previous simulations as they are patched anyway
+    # rollback any left-overs from hard-aborted previous simulations
+    rollback_network_failure_simulation(mode, zone, filters, configuration, secrets)
 
     # input validation
     validate_duration(duration)
     validate_mode(mode, ['total', 'ingress', 'egress'])
     validate_zone(zone)
     filters = norm_filters(filters, ['instances'], [], [])
+    filters = norm_filters(filters, ['instances'], [], [])
     instances_filter = filters['instances']
     validate_instance_filter(instances_filter)
-    shoot_id = get_shoot_technical_id(instances_filter)
-    uuids = get_vm_uuids(configuration=configuration,secrets=secrets,zone=zone,shoot_technical_id=shoot_id)
+    si = vsphere_vcenter_service_instance(configuration=configuration,secrets=secrets)
+    uuids = [vm.instanceUuid for vm in list_instances_copy(si, zone, instances_filter)]
     client = vsphere_nsxt_client(configuration=configuration,secrets=secrets,is_policy=True)
 
     # block network traffic
-    name = make_policy_name(zone, instances_filter)
+    name = SECURITY_POLICY_NAME_LAMBDA(zone, instances_filter, mode)
     logger.info(f'Creating security policy {name} in DFW for zone {zone} ({mode}).')
     expr = nsxt_build_expression_vm_uuids(uuids)
     nsxt_create_infra_domain_group(client, name, [expr])
@@ -191,9 +174,17 @@ def run_network_failure_simulation(
     nsxt_create_security_policy(client, name, policy)
 
     # wait until terminated
+    included_uuids = set(uuids)
     terminator = Terminator(duration)
     while not terminator.is_terminated():
         time.sleep(1)
+        uuids = [vm.instanceUuid for vm in list_instances_copy(si, zone, instances_filter)]
+        new_uuids = [uuid for uuid in uuids if not uuid in included_uuids]
+        if new_uuids:
+            logger.info(f'Updating domain group for {len(new_uuids)} new instances.')
+            expr = nsxt_build_expression_vm_uuids(uuids)
+            nsxt_create_infra_domain_group(client, name, [expr])
+            included_uuids = set(uuids)
 
     # rollback
     rollback_network_failure_simulation(mode, zone, filters, configuration, secrets)
@@ -213,45 +204,17 @@ def rollback_network_failure_simulation(
     client = vsphere_nsxt_client(configuration=configuration,secrets=secrets,is_policy=True)
 
     # rollback simulation gracefully
-    name = make_policy_name(zone, instances_filter)
+    name = SECURITY_POLICY_NAME_LAMBDA(zone, instances_filter, mode)
     logger.info(f'Deleting security policy {name} in zone {zone}.')
     nsxt_delete_security_policy(client, name)
     nsxt_delete_infra_domain_group(client, name)
-
-def make_policy_name(zone: str, instances_filter: Dict[str,str])->str:
-    shoot_technical_id = instances_filter['shoot_technical_id']
-    return f'chaos-{shoot_technical_id}-{zone}'
+    for i in range(30):
+        if not nsxt_get_security_policy(client, name):
+            break
+        time.sleep(1)
 
 def validate_instance_filter(instances_filter: Dict[str,str]):
-    expected_keys = ['shoot_technical_id']
+    expected_keys = ['custom_attributes', 'resource_pools', 'clusters']
     for key in expected_keys:
         if not key in instances_filter:
             raise ValueError(f'Missing key {key} in instance filter')
-
-def get_resource_pool_prefix(configuration: Configuration)->str:
-    if not 'vsphere_resource_pool_prefix' in configuration:
-        raise ValueError(f'Missing key vsphere_resource_pool_prefix in configuration')
-    return configuration['vsphere_resource_pool_prefix']
-
-def get_shoot_technical_id(instances_filter: Dict[str,str])->str:
-    if not 'shoot_technical_id' in instances_filter:
-        raise ValueError(f'Missing key shoot_technical_id in instances filter')
-    return instances_filter['shoot_technical_id']
-
-def get_vm_uuids(configuration: Configuration, secrets: Secrets, zone: str, shoot_technical_id: str)->List[str]:
-    """
-    Gets instance UUIDs of all instances of the given shoot cluster in the given zone
-    """
-    client = vsphere_vcenter_client(configuration = configuration, secrets = secrets)
-    prefix = get_resource_pool_prefix(configuration)
-    vms = list_instances(client, zone=zone, resource_pool_prefix=prefix, shoot_technical_id=shoot_technical_id)
-    names_to_fetch = []
-    for vm in vms:
-        names_to_fetch.append(vm.name)
-    si = vsphere_vcenter_service_instance(configuration = configuration, secrets = secrets)
-    result = get_virtualmachines(service_instance=si, vm_name_set=set(names_to_fetch))
-    uuids = []
-    for name in result:
-        uuids.append(result[name].config.instanceUuid)
-    return uuids
-

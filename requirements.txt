@@ -10,5 +10,12 @@ openstacksdk==1.0.0
 python-box==7.0.0
 PyYAML==6.0
 urllib3==1.26.14
-nsx-policy-python-sdk==4.0.1.0.0
-pyVmomi==7.0.3
+
+## The following libs are needed for vSphere, but they are not available with standard mechanisms.
+## Instead follow https://github.com/vmware/vsphere-automation-sdk-python#quick-start-guide and
+## 1. Run "pip install --upgrade git+https://github.com/vmware/vsphere-automation-sdk-python.git"
+## 2. Run "pip install -r requirements.txt" afterwards again to restore requests 2.28.x
+##
+#nsx-policy-python-sdk==4.0.1.0.0 
+#pyVmomi==7.0.3
+#vapi-client-bindings == 4.0.0
