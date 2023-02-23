@@ -17,6 +17,15 @@ Copyright: 2023 SAP SE or an SAP affiliate company and Gardener contributors
 License: Apache-2.0
 
 # --------------------------------------------------
+# source code (vsphere specifics)
+
+Files:
+  chaosgarden/vsphere/pchelper.py
+Source: https://github.com/vmware/pyvmomi-community-samples/blob/master/samples/tools/pchelper.py (modified)
+Copyright: Copyright (c) 2014-2021 VMware, Inc. All Rights Reserved.
+License: Apache-2.0
+
+# --------------------------------------------------
 # documentation
 
 Files:

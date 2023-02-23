@@ -17,7 +17,7 @@ Read more on how to simulate *compute* and *network* outages for these cloud pro
 - **Module: [`azure`](/docs/azure/readme.md)**
 - **Module: [`gcp`](/docs/gcp/readme.md)**
 - **Module: [`openstack`](/docs/openstack/readme.md)**
-- **Module: `vsphere`** (VMware vSphere is not yet supported)
+- **Module: [`vsphere`](/docs/vsphere/readme.md)**
 - **Module: `metal`** (Gardener on Metal is not yet supported)
 
 The API, parameterization, and implementation is as homogeneous as possible across the different cloud providers, so that consumers of these packages have only minimal effort. However, if you are a Gardener user, please read on and use the [Gardener-specific module](#gardener) instead, which makes it even easier and safer for you.
@@ -52,6 +52,8 @@ cd gardener-chaos-engineering
 python -m pip install -r requirements.txt
 export PYTHONPATH="$PYTHONPATH:$(pwd)"
 ```
+
+If you want to use the VMware vSphere module, please note the remarks in [`requirements.txt`](/requirements.txt) for `vSphere`.
 
 For usage and configuration of the individual modules, please see the detailed [docs](/docs) on the modules listed above.
 
