@@ -372,6 +372,7 @@ def resolve_cloud_provider_simulation(zone, configuration, secrets) -> Tuple[Cal
     shoot           = Box(garden.client(API.CustomResources).get_namespaced_custom_object(name = configuration.garden.shoot, namespace = project.spec.namespace, group = 'core.gardener.cloud', version = 'v1beta1', plural = 'shoots'))
     secret_binding  = Box(garden.client(API.CustomResources).get_namespaced_custom_object(name = shoot.spec.secretBindingName, namespace = project.spec.namespace, group = 'core.gardener.cloud', version = 'v1beta1', plural = 'secretbindings'))
     credentials     = Box(garden.client(API.CoreV1).read_namespaced_secret(name = secret_binding.secretRef.name, namespace = secret_binding.secretRef.namespace).data)
+    cloud_profile   = Box(garden.client(API.CustomResources).get_cluster_custom_object(name = shoot.spec.cloudProfileName, group = 'core.gardener.cloud', version = 'v1beta1', plural = 'cloudprofiles'))
 
     # handle different cloud providers
     cloud_provider = shoot.spec.provider.type
@@ -417,6 +418,29 @@ def resolve_cloud_provider_simulation(zone, configuration, secrets) -> Tuple[Cal
             'password': base64.b64decode(credentials['password']).decode('utf-8'),
             'project_domain_name': base64.b64decode(credentials['domainName']).decode('utf-8'),
             'project_name': base64.b64decode(credentials['tenantName']).decode('utf-8')}
+    elif cloud_provider == 'vsphere':
+        filters = {
+            'virtual_machines': {
+                'custom_attributes': {"mcm.gardener.cloud/cluster": f'{shoot.status.technicalID}'},
+                'resource_pools': [cloud_profile.spec.providerConfig.namePrefix + '-{zone}'],
+                'clusters': []}}
+        region = None
+        for r in cloud_profile.spec.providerConfig.regions:
+            if r.name == shoot.spec.region:
+                region = r
+                break
+        if not region:
+            raise ValueError(f'region {shoot.spec.region} not found in cloud profile')
+        configuration = {
+            'vsphere_vcenter_server': region.vsphereHost,
+            'vsphere_vcenter_insecure': region.vsphereInsecureSSL,
+            'vsphere_nsxt_server': region.nsxtHost,
+            'vsphere_nsxt_insecure': region.nsxtInsecureSSL}
+        secrets = {
+            'vsphere_username': base64.b64decode(credentials['vsphereUsername']).decode('utf-8'),
+            'vsphere_password': base64.b64decode(credentials['vspherePassword']).decode('utf-8'),
+            'nsxt_username': base64.b64decode(credentials['nsxtUsername']).decode('utf-8'),
+            'nsxt_password': base64.b64decode(credentials['nsxtPassword']).decode('utf-8')}
     else:
         raise ValueError(f'Cloud provider (was {cloud_provider}) unknown/not supported!')
 
