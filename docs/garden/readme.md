@@ -10,6 +10,8 @@ This module provides [`chaostoolkit`](https://chaostoolkit.org) actions to simul
 - **Network**: Blocking only *ingress* or only *egress* or *all* network traffic for nodes in one zone.
 - **Pods**: *Termination* of control plane pods (depends on your access permissions - end users have no access), system component pods (Gardener-managed addons in your `kube-system` namespace), or pods in general in one zone with a min/max lifetime (e.g. 0s-0s to shoot down any pod right when it tries to come up or e.g. 10-60s to let them come up at least for 10s but shoot them down at the latest after 60s) with or without a grace period.
 
+:warning: If you block network traffic one way, e.g. *ingress* (resp. *egress*), the other way, then *egress* (resp. *ingress*), is fully opened, so use with care.
+
 You can run the above in parallel, even of the same type, as long as the targeted zones differ. This way you can also test whether you recover after a multi-zonal outage.
 
 This module also provides [`chaostoolkit`](https://chaostoolkit.org) probes:
