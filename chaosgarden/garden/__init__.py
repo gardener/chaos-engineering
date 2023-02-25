@@ -1,7 +1,7 @@
 import base64
 import json
 
-from chaosgarden.k8s.model.cluster import API, Cluster
+from chaosgarden.k8s.api.cluster import API, Cluster
 
 ADMIN_KUBECONFIG_REQUEST = {
     'apiVersion': 'authentication.gardener.cloud/v1alpha1',

@@ -3,7 +3,7 @@ from socket import AF_INET, SOCK_STREAM, socket
 
 from box import Box
 
-from chaosgarden.k8s.model.cluster_clients import API, WrappedRawClient
+from chaosgarden.k8s.api.clients import API, WrappedRawClient
 
 
 class Cluster():

@@ -25,9 +25,7 @@
         }
     ],
     "configuration": {
-        "garden": {
-            "project": "...",                            # replace with your project name; field name fixed
-            "shoot":   "..."                             # replace with your cluster name; field name fixed
-        }
+        "garden_project": "...",                         # replace with your project name; field name fixed
+        "garden_shoot":   "..."                          # replace with your shoot name;   field name fixed
     }
 }
