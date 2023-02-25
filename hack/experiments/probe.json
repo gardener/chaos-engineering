@@ -1,0 +1,55 @@
+{
+    "title": "run-shoot-cluster-health-probe",
+    "description": "run-shoot-cluster-health-probe",
+    "method": [
+        {
+            "type": "probe",
+            "name": "run-shoot-cluster-health-probe",
+            "tolerance": true,
+            "provider": {
+                "type": "python",
+                "module": "chaosgarden.garden.probes",
+                "func": "run_shoot_cluster_health_probe",
+                "arguments": {
+                    "duration": 60,
+                    "thresholds": "${thresholds}"
+                }
+            }
+        }
+    ],
+    "rollbacks": [
+        {
+            "type": "action",
+            "name": "rollback-shoot-cluster-health-probe",
+            "provider": {
+                "type": "python",
+                "module": "chaosgarden.garden.probes",
+                "func": "rollback_shoot_cluster_health_probe"
+            }
+        }
+    ],
+    "configuration": {
+        "garden_project": {
+            "type": "env",
+            "key": "GARDEN_PROJECT"
+        },
+        "garden_shoot": {
+            "type": "env",
+            "key": "GARDEN_SHOOT"
+        },
+        "thresholds": {
+            "regional": {
+                "api": 0,
+                "web-hook": 0
+            },
+            "!regional": {
+                "api-external": 0,
+                "api-internal": 0,
+                "dns-external": 0,
+                "dns-internal": 0,
+                "dns-management": 0,
+                "pod-lifecycle": 0
+            }
+        }
+    }
+}

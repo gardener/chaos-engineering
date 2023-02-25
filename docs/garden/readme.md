@@ -16,9 +16,7 @@ You can run the above in parallel, even of the same type, as long as the targete
 
 This module also provides [`chaostoolkit`](https://chaostoolkit.org) probes:
 
-- **Health Probe**: Probes various Gardener-managed cluster functions in parallel.
-
-:warning: The probe requires resources that have not yet been shared as of today (dynamic cert generation must be implemented first), so it isn't usable today for you, unless you have also access to said resources.
+- **Health Probe**: Probes various Gardener-managed cluster functions in parallel. See [`k8s`](/docs/k8s/readme.md) for details.
 
 ### How?
 
@@ -76,11 +74,11 @@ The following [configuration](https://chaostoolkit.org/reference/api/experiment/
 
 ### Secrets
 
-The following [secret](https://chaostoolkit.org/reference/api/experiment/#secrets) fields are optional (only one is permitted; if none is set, `$KUBECONFIG` is assumed to be pointing to Gardener):
+The following [secret](https://chaostoolkit.org/reference/api/experiment/#secrets) field is optional:
 
-- `kubeconfig_struct`: Kubernetes cluster configuration for Gardener (json struct)
-- `kubeconfig_file`: Kubernetes cluster configuration for Gardener (path to kubeconfig file)
-- `kubeconfig_envvar`: Kubernetes cluster configuration for Gardener (env var with path to kubeconfig file)
+- `kubeconfig_path`: Path to `kubeconfig` file with Garden cluster configuration and credentials
+
+You can omit this field if `$KUBECONFIG` points to your `kubeconfig` file (default).
 
 ## Examples
 
@@ -95,4 +93,4 @@ The following [secret](https://chaostoolkit.org/reference/api/experiment/#secret
 - [Run Shoot Cluster Health Probe as Hypothesis](/docs/garden/run-shoot-cluster-health-probe-as-hypothesis.json) (doesn't really fit as it must run in background, which is not supported by `chaostoolkit`)
 - [Run Shoot Cluster Health Probe as Method](/docs/garden/run-shoot-cluster-health-probe-as-method.json) (the better alternative and almost identical in `chaostoolkit` behavior)
 
-- [Explicit Garden Secrets](/docs/garden/explicit-garden-secrets.json) (if you do not want to use `$KUBECONFIG` pointing to Gardener)
+- [Explicit Garden Secrets](/docs/garden/explicit-garden-secrets.json) (if you do not want to use `$KUBECONFIG`)

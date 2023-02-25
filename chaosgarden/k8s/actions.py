@@ -9,7 +9,7 @@ from chaoslib.types import Secrets
 from logzero import logger
 
 from chaosgarden.k8s import to_authenticator
-from chaosgarden.k8s.model.cluster import API, Cluster
+from chaosgarden.k8s.api.cluster import API, Cluster
 from chaosgarden.util.terminator import Terminator
 from chaosgarden.util.threading import launch_thread
 

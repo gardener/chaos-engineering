@@ -1,6 +1,7 @@
-resources/
+.activate
 .garden
 .kube
+*.bak
 *.log
 journal.json
 __pycache__/

@@ -10,6 +10,7 @@ Files:
   .github/*
   .gitignore
   chaosgarden/*
+  hack/*
   CODEOWNERS
   requirements.txt
   VERSION
