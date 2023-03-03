@@ -11,7 +11,7 @@ from box import Box
 from chaosgarden.garden import get_kubeconfig
 from chaosgarden.k8s import to_authenticator
 from chaosgarden.k8s.actions import run_pod_failure_simulation
-from chaosgarden.k8s.model.cluster import API, Cluster
+from chaosgarden.k8s.api.cluster import API, Cluster
 from chaosgarden.util.threading import launch_thread
 
 __all__ = [
@@ -308,9 +308,9 @@ def resolve_zones(spec: Dict) -> Set:
     return zones
 
 def resolve_zone(zone: Union[int, str], zones: Set) -> str:
+    zones = sorted(zones)
+    zones_as_string = ', '.join(zones)
     if isinstance(zone, int):
-        zones = sorted(zones)
-        zones_as_string = ', '.join(zones)
         assert zone >= 0 and zone < len(zones), f'Zone index {zone} out of bounds (known zones are {zones_as_string})!'
         zone = zones[zone]
     else:
@@ -330,8 +330,8 @@ def resolve_pod_simulation(target, zone, ignore_daemon_sets, node_label_selector
 
     # access garden cluster and retrieve required data
     garden  = Cluster('garden', authenticator)
-    project = Box(garden.client(API.CustomResources).get_cluster_custom_object(name = configuration.garden.project, group = 'core.gardener.cloud', version = 'v1beta1', plural = 'projects'))
-    shoot   = Box(garden.client(API.CustomResources).get_namespaced_custom_object(name = configuration.garden.shoot, namespace = project.spec.namespace, group = 'core.gardener.cloud', version = 'v1beta1', plural = 'shoots'))
+    project = Box(garden.client(API.CustomResources).get_cluster_custom_object(name = configuration.garden_project, group = 'core.gardener.cloud', version = 'v1beta1', plural = 'projects'))
+    shoot   = Box(garden.client(API.CustomResources).get_namespaced_custom_object(name = configuration.garden_shoot, namespace = project.spec.namespace, group = 'core.gardener.cloud', version = 'v1beta1', plural = 'shoots'))
     if target == Target.ControlPlane:
         seed = Box(garden.client(API.CustomResources).get_cluster_custom_object(name = shoot.spec.seedName, group = 'core.gardener.cloud', version = 'v1beta1', plural = 'seeds'))
         try:
@@ -368,8 +368,8 @@ def resolve_cloud_provider_simulation(zone, configuration, secrets) -> Tuple[Cal
 
     # access garden cluster and retrieve required data
     garden          = Cluster('garden', authenticator)
-    project         = Box(garden.client(API.CustomResources).get_cluster_custom_object(name = configuration.garden.project, group = 'core.gardener.cloud', version = 'v1beta1', plural = 'projects'))
-    shoot           = Box(garden.client(API.CustomResources).get_namespaced_custom_object(name = configuration.garden.shoot, namespace = project.spec.namespace, group = 'core.gardener.cloud', version = 'v1beta1', plural = 'shoots'))
+    project         = Box(garden.client(API.CustomResources).get_cluster_custom_object(name = configuration.garden_project, group = 'core.gardener.cloud', version = 'v1beta1', plural = 'projects'))
+    shoot           = Box(garden.client(API.CustomResources).get_namespaced_custom_object(name = configuration.garden_shoot, namespace = project.spec.namespace, group = 'core.gardener.cloud', version = 'v1beta1', plural = 'shoots'))
     secret_binding  = Box(garden.client(API.CustomResources).get_namespaced_custom_object(name = shoot.spec.secretBindingName, namespace = project.spec.namespace, group = 'core.gardener.cloud', version = 'v1beta1', plural = 'secretbindings'))
     credentials     = Box(garden.client(API.CoreV1).read_namespaced_secret(name = secret_binding.secretRef.name, namespace = secret_binding.secretRef.namespace).data)
     cloud_profile   = Box(garden.client(API.CustomResources).get_cluster_custom_object(name = shoot.spec.cloudProfileName, group = 'core.gardener.cloud', version = 'v1beta1', plural = 'cloudprofiles'))
@@ -401,7 +401,7 @@ def resolve_cloud_provider_simulation(zone, configuration, secrets) -> Tuple[Cal
             'tenant_id':     base64.b64decode(credentials['tenantID']).decode('utf-8')}
     elif cloud_provider == 'gcp':
         filters = {
-            'instances': f'labels.name={configuration.garden.shoot} AND labels.node_kubernetes_io_role=node AND labels.worker_gardener_cloud_pool:*', # tags such as `tags.items=kubernetes-io-cluster-shoot--core--chaos-gcp-3z` using our technical ID do not work, see https://issuetracker.google.com/issues/120255780#comment14
+            'instances': f'labels.name={configuration.garden_shoot} AND labels.node_kubernetes_io_role=node AND labels.worker_gardener_cloud_pool:*', # tags such as `tags.items=kubernetes-io-cluster-shoot--core--chaos-gcp-3z` using our technical ID do not work, see https://issuetracker.google.com/issues/120255780#comment14
             'networks': f'name={shoot.status.technicalID}'}
         configuration = None
         secrets = {

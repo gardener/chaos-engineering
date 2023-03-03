@@ -7,7 +7,7 @@ from kubernetes.client import ApiClient, Configuration
 from kubernetes.config import (load_kube_config_from_dict,
                                new_client_from_config)
 
-from chaosgarden.k8s.model.cluster_clients import API
+from chaosgarden.k8s.api.clients import API
 
 
 class Authenticator():

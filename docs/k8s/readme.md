@@ -12,9 +12,15 @@ You can run the above in parallel, as long as the targeted zones differ. This wa
 
 This module also provides [`chaostoolkit`](https://chaostoolkit.org) probes:
 
-- **Health Probe**: Probes various Kubernetes cluster functions in parallel.
-
-:warning: The probe requires resources that have not yet been shared as of today (dynamic cert generation must be implemented first), so it isn't usable today for you, unless you have also access to said resources.
+- **Health Probe**: Probes various Kubernetes cluster functions in parallel:
+  - **`api`**: API server availability from outside the cluster (regional sub-probe)
+  - **`api-external`**: API server availability from inside the cluster via the LB DNS record (zonal sub-probe)
+  - **`api-internal`**: API server availability from inside the cluster via the `kubernetes` cluster service (zonal sub-probe)
+  - **`dns-external`**: Resolution of public DNS records from inside the cluster (zonal sub-probe)
+  - **`dns-internal`**: Resolution of cluster DNS records from inside the cluster (zonal sub-probe)
+  - **`dns-management`**: DNS record update capability from inside the cluster (zonal sub-probe)
+  - **`pod-lifecycle`**: Pod scheduling capability into the cluster (zonal sub-probe)
+  - **`web-hook`**: Web hook reachability from the API server to the web hooks inside the cluster (regional sub-probe)
 
 ### How?
 
@@ -57,11 +63,11 @@ No [configuration](https://chaostoolkit.org/reference/api/experiment/#configurat
 
 ### Secrets
 
-The following [secret](https://chaostoolkit.org/reference/api/experiment/#secrets) fields are optional (only one is permitted; if none is set, `$KUBECONFIG` is assumed to be pointing to the cluster):
+The following [secret](https://chaostoolkit.org/reference/api/experiment/#secrets) field is optional:
 
-- `kubeconfig_struct`: Kubernetes cluster configuration for cluster (json struct)
-- `kubeconfig_file`: Kubernetes cluster configuration for cluster (path to kubeconfig file)
-- `kubeconfig_envvar`: Kubernetes cluster configuration for cluster (env var with path to kubeconfig file)
+- `kubeconfig_path`: Path to `kubeconfig` file with Kubernetes cluster configuration and credentials
+
+You can omit this field if `$KUBECONFIG` points to your `kubeconfig` file (default).
 
 ## Examples
 
@@ -70,4 +76,4 @@ The following [secret](https://chaostoolkit.org/reference/api/experiment/#secret
 - [Run Cluster Health Probe as Hypothesis](/docs/k8s/run-cluster-health-probe-as-hypothesis.json) (doesn't really fit as it must run in background, which is not supported by `chaostoolkit`)
 - [Run Cluster Health Probe as Method](/docs/k8s/run-cluster-health-probe-as-method.json) (the better alternative and almost identical in `chaostoolkit` behavior)
 
-- [Explicit Kubernetes Secrets](/docs/k8s/explicit-k8s-secrets.json) (if you do not want to use `$KUBECONFIG` pointing to the cluster)
+- [Explicit Kubernetes Secrets](/docs/k8s/explicit-k8s-secrets.json) (if you do not want to use `$KUBECONFIG`)

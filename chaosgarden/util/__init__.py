@@ -12,8 +12,7 @@ def norm_filters(filters, expected_keys, tolerated_keys, empty_filter):
 def validate_duration(duration):
     if duration == None:
         duration = 0
-    elif not isinstance(duration, int):
-        raise ValueError(f'Duration not an integer (must be integer)!')
+    int(duration) # test that it can be casted to an int
 
 def validate_mode(mode, supported_modes):
     if mode not in supported_modes:

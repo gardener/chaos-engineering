@@ -31,6 +31,8 @@
         }
     ],
     "configuration": {
+        "garden_project": "...",                         # replace with your project name; field name fixed
+        "garden_shoot":   "...",                         # replace with your shoot name;   field name fixed
         "thresholds": {                                  # replace with your thresholds that will fail the probe; field name free
             "api": {
                 "initial-gap": 20,
@@ -74,16 +76,12 @@
                 "incidents": 0,
                 "downtime":  0
             },
-            "vpn": {
+            "web-hook": {
                 "initial-gap": 45,
                 "gap": 10,
                 "incidents": 0,
                 "downtime":  0
             }
-        },
-        "garden": {
-            "project": "...",                            # replace with your project name; field name fixed
-            "shoot":   "..."                             # replace with your cluster name; field name fixed
         }
     }
 }

@@ -80,7 +80,7 @@
                 "incidents": 0,
                 "downtime":  0
             },
-            "vpn": {
+            "web-hook": {
                 "initial-gap": 45,
                 "gap": 10,
                 "incidents": 0,
