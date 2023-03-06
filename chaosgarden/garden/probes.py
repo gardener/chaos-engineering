@@ -8,14 +8,42 @@ from chaosgarden.garden.actions import resolve_zones
 from chaosgarden.k8s import to_authenticator
 from chaosgarden.k8s.api.cluster import API, Cluster
 from chaosgarden.k8s.probe.thresholds import Thresholds
-from chaosgarden.k8s.probes import (rollback_cluster_health_probe,
+from chaosgarden.k8s.probes import (list_cluster_key_resources,
+                                    rollback_cluster_health_probe,
                                     run_cluster_health_probe)
 from chaosgarden.util.threading import launch_thread
 
 __all__ = [
+    'list_shoot_cluster_key_resources',
     'run_shoot_cluster_health_probe_in_background',
     'run_shoot_cluster_health_probe',
     'rollback_shoot_cluster_health_probe']
+
+
+####################################
+# Shoot Cluster Key Resources List #
+####################################
+
+def list_shoot_cluster_key_resources(
+        pod_node_label_selector: str = None,
+        pod_label_selector: str = None,
+        pod_metadata_selector: str = None,
+        pod_owner_selector: str = None,
+        lease_label_selector: str = None,
+        lease_metadata_selector: str = None,
+        configuration: Dict = None,
+        secrets: Dict = None):
+    secrets, _ = resolve_secrets_and_zones(
+        configuration = configuration,
+        secrets = secrets)
+    return list_cluster_key_resources(
+        pod_node_label_selector = pod_node_label_selector,
+        pod_label_selector = pod_label_selector,
+        pod_metadata_selector = pod_metadata_selector,
+        pod_owner_selector = pod_owner_selector,
+        lease_label_selector = lease_label_selector,
+        lease_metadata_selector = lease_metadata_selector,
+        secrets = secrets)
 
 
 ##############################

@@ -15,7 +15,7 @@
                     "grace_period": 0,                   # keep `0` (immediate) or replace with number of seconds pod may take to terminate
                     "zone": 0,                           # replace with your zone index (alphabetically ordered, starting at 0)
                     "ignore_daemon_sets": false,         # specify whether or not daemonset pods shall be ignored
-                    "node_label_selector": null,         # replace with your node label selector
+                    "pod_node_label_selector": null,     # replace with your pod node label selector
                     "pod_label_selector": null,          # replace with your pod label selector
                     "pod_metadata_selector": null,       # replace with your pod metadata your selector
                     "pod_owner_selector": null,          # replace with your pod owner selector
