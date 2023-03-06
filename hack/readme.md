@@ -18,8 +18,6 @@ This is a collection of scripts and resources that helps with local development.
 - `repl_resources.yaml`: Resources for the above
 - `repl_bash.sh`: Exec into the above pod and run `bash` interactive shell
 - `repl.sh`: Exec into the above pod and run Python interactive shell
-- `rolling_zone_outage.sh`: Perform a rolling zone outage on a seed and shoot in parallel
-- `rolling_zone_outage.py`: Source code for above
 - `wap`: Watch cluster health probe resources (target shoot manually first)
 - `wacl`: Watch key cluster resources (target shoot manually first)
 - `wacp`: Watch key control plane resources (target seed manually first)
