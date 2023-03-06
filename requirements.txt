@@ -7,7 +7,7 @@ chaostoolkit-google-cloud-platform==0.8.0
 chaostoolkit-kubernetes==0.26.3
 kubernetes==24.2.0
 Mako==1.2.4
-openstacksdk==1.0.0
+openstacksdk==1.0.1
 python-box==7.0.0
 PyYAML==6.0
 urllib3==1.26.14
