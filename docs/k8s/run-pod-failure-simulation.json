@@ -14,7 +14,7 @@
                     "min_runtime": 0,                    # keep `0` (immediate) or replace with number of seconds pod must run at least
                     "max_runtime": 0,                    # keep `0` (immediate) or replace with number of seconds pod may run at most
                     "grace_period": 0,                   # keep `0` (immediate) or replace with number of seconds pod may take to terminate
-                    "node_label_selector": null,         # replace with your node label selector
+                    "pod_node_label_selector": null,     # replace with your pod node label selector
                     "pod_label_selector": null,          # replace with your pod label selector
                     "pod_metadata_selector": null,       # replace with your pod metadata your selector
                     "pod_owner_selector": null,          # replace with your pod owner selector

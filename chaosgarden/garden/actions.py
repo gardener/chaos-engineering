@@ -9,7 +9,7 @@ from typing import Any, Callable, Dict, List, Set, Tuple, Union
 from box import Box
 
 from chaosgarden.garden import get_kubeconfig
-from chaosgarden.k8s import to_authenticator
+from chaosgarden.k8s import supplement_selector, to_authenticator
 from chaosgarden.k8s.actions import run_pod_failure_simulation
 from chaosgarden.k8s.api.cluster import API, Cluster
 from chaosgarden.util.threading import launch_thread
@@ -38,7 +38,7 @@ def run_control_plane_pod_failure_simulation_in_background(
         max_runtime: int = 0,
         grace_period: int = 0,
         zone: Union[int, str] = None,
-        node_label_selector: str = None,
+        pod_node_label_selector: str = None,
         pod_label_selector: str = None,
         pod_metadata_selector: str = None,
         pod_owner_selector: str = None,
@@ -52,18 +52,18 @@ def run_control_plane_pod_failure_simulation(
         max_runtime: int = 0,
         grace_period: int = 0,
         zone: Union[int, str] = None,
-        node_label_selector: str = None,
+        pod_node_label_selector: str = None,
         pod_label_selector: str = None,
         pod_metadata_selector: str = None,
         pod_owner_selector: str = None,
         duration: int = 0,
         configuration: Dict = None,
         secrets: Dict = None):
-    node_label_selector, pod_label_selector, pod_metadata_selector, pod_owner_selector, secrets = resolve_pod_simulation(
+    pod_node_label_selector, pod_label_selector, pod_metadata_selector, pod_owner_selector, secrets = resolve_pod_simulation(
         target = Target.ControlPlane,
         zone = zone,
         ignore_daemon_sets = True,
-        node_label_selector = node_label_selector,
+        pod_node_label_selector = pod_node_label_selector,
         pod_label_selector = pod_label_selector,
         pod_metadata_selector = pod_metadata_selector,
         pod_owner_selector = pod_owner_selector,
@@ -73,7 +73,7 @@ def run_control_plane_pod_failure_simulation(
         min_runtime = min_runtime,
         max_runtime = max_runtime,
         grace_period = grace_period,
-        node_label_selector = node_label_selector,
+        pod_node_label_selector = pod_node_label_selector,
         pod_label_selector = pod_label_selector,
         pod_metadata_selector = pod_metadata_selector,
         pod_owner_selector = pod_owner_selector,
@@ -91,7 +91,7 @@ def run_system_components_pod_failure_simulation_in_background(
         grace_period: int = 0,
         zone: Union[int, str] = None,
         ignore_daemon_sets: bool = False,
-        node_label_selector: str = None,
+        pod_node_label_selector: str = None,
         pod_label_selector: str = None,
         pod_metadata_selector: str = None,
         pod_owner_selector: str = None,
@@ -106,18 +106,18 @@ def run_system_components_pod_failure_simulation(
         grace_period: int = 0,
         zone: Union[int, str] = None,
         ignore_daemon_sets: bool = False,
-        node_label_selector: str = None,
+        pod_node_label_selector: str = None,
         pod_label_selector: str = None,
         pod_metadata_selector: str = None,
         pod_owner_selector: str = None,
         duration: int = 0,
         configuration: Dict = None,
         secrets: Dict = None):
-    node_label_selector, pod_label_selector, pod_metadata_selector, pod_owner_selector, secrets = resolve_pod_simulation(
+    pod_node_label_selector, pod_label_selector, pod_metadata_selector, pod_owner_selector, secrets = resolve_pod_simulation(
         target = Target.SystemComponents,
         zone = zone,
         ignore_daemon_sets = ignore_daemon_sets,
-        node_label_selector = node_label_selector,
+        pod_node_label_selector = pod_node_label_selector,
         pod_label_selector = pod_label_selector,
         pod_metadata_selector = pod_metadata_selector,
         pod_owner_selector = pod_owner_selector,
@@ -127,7 +127,7 @@ def run_system_components_pod_failure_simulation(
         min_runtime = min_runtime,
         max_runtime = max_runtime,
         grace_period = grace_period,
-        node_label_selector = node_label_selector,
+        pod_node_label_selector = pod_node_label_selector,
         pod_label_selector = pod_label_selector,
         pod_metadata_selector = pod_metadata_selector,
         pod_owner_selector = pod_owner_selector,
@@ -145,7 +145,7 @@ def run_general_pod_failure_simulation_in_background(
         grace_period: int = 0,
         zone: Union[int, str] = None,
         ignore_daemon_sets: bool = False,
-        node_label_selector: str = None,
+        pod_node_label_selector: str = None,
         pod_label_selector: str = None,
         pod_metadata_selector: str = None,
         pod_owner_selector: str = None,
@@ -160,18 +160,18 @@ def run_general_pod_failure_simulation(
         grace_period: int = 0,
         zone: Union[int, str] = None,
         ignore_daemon_sets: bool = False,
-        node_label_selector: str = None,
+        pod_node_label_selector: str = None,
         pod_label_selector: str = None,
         pod_metadata_selector: str = None,
         pod_owner_selector: str = None,
         duration: int = 0,
         configuration: Dict = None,
         secrets: Dict = None):
-    node_label_selector, pod_label_selector, pod_metadata_selector, pod_owner_selector, secrets = resolve_pod_simulation(
+    pod_node_label_selector, pod_label_selector, pod_metadata_selector, pod_owner_selector, secrets = resolve_pod_simulation(
         target = Target.Workers,
         zone = zone,
         ignore_daemon_sets = ignore_daemon_sets,
-        node_label_selector = node_label_selector,
+        pod_node_label_selector = pod_node_label_selector,
         pod_label_selector = pod_label_selector,
         pod_metadata_selector = pod_metadata_selector,
         pod_owner_selector = pod_owner_selector,
@@ -181,7 +181,7 @@ def run_general_pod_failure_simulation(
         min_runtime = min_runtime,
         max_runtime = max_runtime,
         grace_period = grace_period,
-        node_label_selector = node_label_selector,
+        pod_node_label_selector = pod_node_label_selector,
         pod_label_selector = pod_label_selector,
         pod_metadata_selector = pod_metadata_selector,
         pod_owner_selector = pod_owner_selector,
@@ -317,13 +317,7 @@ def resolve_zone(zone: Union[int, str], zones: Set) -> str:
         assert zone in zones, f'Zone designator {zone} not recognised (known zones are {zones_as_string})!'
     return zone
 
-def supplement_selector(supplement: str, selector: str) -> str:
-    if selector:
-        return f'{selector},{supplement}'
-    else:
-        return supplement
-
-def resolve_pod_simulation(target, zone, ignore_daemon_sets, node_label_selector, pod_label_selector, pod_metadata_selector, pod_owner_selector, configuration, secrets) -> Tuple[str, str, str, str, Dict]:
+def resolve_pod_simulation(target, zone, ignore_daemon_sets, pod_node_label_selector, pod_label_selector, pod_metadata_selector, pod_owner_selector, configuration, secrets) -> Tuple[str, str, str, str, Dict]:
     # prep
     configuration = Box(configuration)
     authenticator = to_authenticator(secrets)
@@ -347,7 +341,7 @@ def resolve_pod_simulation(target, zone, ignore_daemon_sets, node_label_selector
 
     # update selectors
     if zone:
-        node_label_selector = supplement_selector(f'topology.kubernetes.io/zone={zone}', node_label_selector)
+        pod_node_label_selector = supplement_selector(f'topology.kubernetes.io/zone={zone}', pod_node_label_selector)
     if ignore_daemon_sets:
         pod_owner_selector = supplement_selector(f'kind!=DaemonSet', pod_owner_selector)
     if target == Target.ControlPlane:
@@ -358,7 +352,7 @@ def resolve_pod_simulation(target, zone, ignore_daemon_sets, node_label_selector
         pod_metadata_selector = supplement_selector(f'namespace=kube-system', pod_metadata_selector)
 
     # finally return everything we got
-    return node_label_selector, pod_label_selector, pod_metadata_selector, pod_owner_selector, {'kubeconfig_yaml': kubeconfig}
+    return pod_node_label_selector, pod_label_selector, pod_metadata_selector, pod_owner_selector, {'kubeconfig_yaml': kubeconfig}
 
 def resolve_cloud_provider_simulation(zone, configuration, secrets) -> Tuple[Callable, str, List[Dict[str, Any]], Dict, Dict]:
     # prep

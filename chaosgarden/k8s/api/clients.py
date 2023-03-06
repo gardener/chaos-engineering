@@ -6,9 +6,9 @@ from threading import RLock
 
 import yaml
 from kubernetes.client import (AdmissionregistrationV1Api, ApiextensionsV1Api,
-                               AppsV1Api, CoreV1Api, CustomObjectsApi,
-                               EventsV1Api, NetworkingV1Api, PolicyV1Api,
-                               RbacAuthorizationV1Api, VersionApi)
+                               AppsV1Api, CoordinationV1Api, CoreV1Api,
+                               CustomObjectsApi, EventsV1Api, NetworkingV1Api,
+                               PolicyV1Api, RbacAuthorizationV1Api, VersionApi)
 from kubernetes.client.exceptions import ApiException
 from kubernetes.client.models.events_v1_event import EventsV1Event
 
@@ -32,6 +32,7 @@ class API(Enum):
   NetworkingV1            = 'networking.k8s.io/v1'            # "
   RbacAuthorizationV1     = 'rbac.authorization.k8s.io/v1'    # "
   AdmissionRegistrationV1 = 'admissionregistration.k8s.io/v1' # "
+  CoordinationV1          = 'coordination.k8s.io/v1'          # "
   EventsV1                = 'events.k8s.io/v1'                # "
   ExtensionsV1            = 'apiextensions.k8s.io/v1'         # "
   CustomResources         = 'custom'                          # default for unknown API versions
@@ -64,6 +65,8 @@ class API(Enum):
       return RbacAuthorizationV1Api(raw_client)
     elif self == self.AdmissionRegistrationV1:
       return AdmissionregistrationV1Api(raw_client)
+    elif self == self.CoordinationV1:
+      return CoordinationV1Api(raw_client)
     elif self == self.EventsV1:
       return EventsV1Api(raw_client)
     elif self == self.ExtensionsV1:

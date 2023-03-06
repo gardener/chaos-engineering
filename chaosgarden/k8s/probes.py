@@ -10,7 +10,8 @@ from chaoslib.types import Secrets
 from kubernetes.client.exceptions import ApiException
 from logzero import logger
 
-from chaosgarden.k8s import to_authenticator
+from chaosgarden.k8s import (SelectorRequirement, filter_leases, filter_pods,
+                             to_authenticator)
 from chaosgarden.k8s.api.cluster import API, Cluster
 from chaosgarden.k8s.probe.metrics import Metrics
 from chaosgarden.k8s.probe.resources.generate_resources import render
@@ -19,9 +20,36 @@ from chaosgarden.util.terminator import Terminator
 from chaosgarden.util.threading import launch_thread
 
 __all__ = [
+    'list_cluster_key_resources',
     'run_cluster_health_probe_in_background',
     'run_cluster_health_probe',
     'rollback_cluster_health_probe']
+
+
+#########################################
+# Kubernetes Cluster Key Resources List #
+#########################################
+
+def list_cluster_key_resources(
+        pod_node_label_selector: str = None,
+        pod_label_selector: str = None,
+        pod_metadata_selector: str = None,
+        pod_owner_selector: str = None,
+        lease_label_selector: str = None,
+        lease_metadata_selector: str = None,
+        configuration: Dict = None,
+        secrets: Dict = None):
+    # input validation
+    pod_node_label_selector = [SelectorRequirement(r) for r in pod_node_label_selector.split(',')] if pod_node_label_selector else []
+    pod_label_selector      = pod_label_selector if pod_label_selector else None
+    pod_metadata_selector   = [SelectorRequirement(r) for r in pod_metadata_selector.split(',')] if pod_metadata_selector else []
+    pod_owner_selector      = [SelectorRequirement(r) for r in pod_owner_selector.split(',')] if pod_owner_selector else []
+    lease_label_selector    = lease_label_selector if lease_label_selector else None
+    lease_metadata_selector = [SelectorRequirement(r) for r in lease_metadata_selector.split(',')] if lease_metadata_selector else []
+    cluster = Cluster(f'cluster', to_authenticator(secrets))
+
+    # dump key resources
+    dump_key_resources(cluster, pod_node_label_selector, pod_label_selector, pod_metadata_selector, pod_owner_selector, lease_label_selector, lease_metadata_selector)
 
 
 ###################################
@@ -106,6 +134,71 @@ def rollback_cluster_health_probe(
 ###########
 # Helpers #
 ###########
+
+def seconds2human(n):
+    units = {
+        'y': 365*24*60*60,
+        'd': 24*60*60,
+        'h': 60*60,
+        'm': 60,
+        's': 1}
+    segments = []
+    for unit, quantity in units.items():
+        quotient = n // quantity
+        if quotient:
+            segments.append(f'{quotient}{unit}')
+            n -= quotient * quantity
+    return ''.join(segments[:2]) if segments else '0s'
+
+def resource_age(resource: Dict):
+    return seconds2human(int(datetime.now().timestamp() - resource.metadata.creationTimestamp.timestamp()))
+
+def node_status(node: Dict):
+    ready = 'N/A'
+    if 'status' in node and 'conditions' in node.status:
+        for c in node.status.conditions:
+            if c.type == 'Ready':
+                ready = 'Ready' if c.status == 'True' else 'NotReady' if c.status == 'False' else c.status
+                break
+    return ready
+
+def pod_status(pod: Dict):
+    phase = 'N/A'
+    if 'status' in pod and 'phase' in pod.status:
+        phase = pod.status.phase
+    ready = 'N/A'
+    if 'status' in pod and 'conditions' in pod.status:
+        for c in pod.status.conditions:
+            if c.type == 'Ready':
+                ready = 'Ready' if c.status == 'True' else 'NotReady' if c.status == 'False' else c.status
+                break
+    return f'{ready} ({phase})'
+
+def dump_key_resources(cluster: Cluster, pod_node_label_selector: List = None, pod_label_selector: str = None, pod_metadata_selector: List = None, pod_owner_selector: List = None, lease_label_selector: str = None, lease_metadata_selector: str = None):
+    nodes = []
+    pods = filter_pods(
+        cluster = cluster,
+        nodes = nodes,
+        pod_node_label_selector = pod_node_label_selector,
+        pod_label_selector = pod_label_selector,
+        pod_metadata_selector = pod_metadata_selector,
+        pod_owner_selector = pod_owner_selector)
+    leases = filter_leases(
+        cluster = cluster,
+        lease_label_selector = lease_label_selector,
+        lease_metadata_selector = lease_metadata_selector)
+    logger.debug(f'Nodes:')
+    logger.debug(f'  {"NAME":<64} {"STATUS":<21} {"CREATED":<10} ZONE')
+    for node in sorted(nodes, key = lambda node: (node.metadata.labels.get('topology.kubernetes.io/zone', 'N/A') if 'labels' in node.metadata else 'N/A', node.metadata.name)):
+        logger.debug(f'- {node.metadata.name:<64} {node_status(node):<21} {resource_age(node):<10} {node.metadata.labels.get("topology.kubernetes.io/zone", "N/A") if "labels" in node.metadata else "N/A"}')
+    logger.debug(f'Pods:')
+    logger.debug(f'  {"NAMESPACE/NAME":<64} {"STATUS":<21} {"CREATED":<10} ZONE (NODE)')
+    for pod in sorted(pods, key = lambda pod: (pod.metadata.namespace, pod.metadata.generateName if 'generateName' in pod.metadata else pod.metadata.name, pod.metadata.labels.get('topology.kubernetes.io/zone', 'N/A') if 'labels' in pod.metadata else 'N/A', pod.metadata.name)):
+        logger.debug(f'- {pod.metadata.namespace + "/" + pod.metadata.name:<64} {pod_status(pod):<21} {resource_age(pod):<10} {pod.metadata.labels.get("topology.kubernetes.io/zone", "N/A") if "labels" in pod.metadata else "N/A"} ({pod.spec.nodeName if "nodeName" in pod.spec else "N/A"})')
+    logger.debug(f'Leases:')
+    logger.debug(f'  {"NAMESPACE/NAME":<64} {"ACQUIRED":<10} {"RENEWED":<10} {"CREATED":<10} HOLDER')
+    for lease in sorted(leases, key = lambda lease: (lease.metadata.namespace, pod.metadata.name)):
+        logger.debug(f'- {lease.metadata.namespace + "/" + lease.metadata.name:<64} {seconds2human(int(datetime.now().timestamp() - lease.spec.acquireTime.timestamp())) if "acquireTime" in lease.spec and lease.spec.acquireTime else "N/A":<10} {seconds2human(int(datetime.now().timestamp() - lease.spec.renewTime.timestamp())) if "renewTime" in lease.spec and lease.spec.renewTime else "N/A":<10} {resource_age(lease):<10} {lease.spec.holderIdentity if "holderIdentity" in lease.spec and lease.spec.holderIdentity else "N/A"}')
 
 def setup(cluster: Cluster):
     zones = set()

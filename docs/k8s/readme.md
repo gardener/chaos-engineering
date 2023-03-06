@@ -52,7 +52,7 @@ Module: [`chaosgarden.k8s.actions`](/chaosgarden/k8s/actions.py)
 
 The following pod selectors are supported:
 
-- `node_label_selector`, e.g. `topology.kubernetes.io/zone=world-1a,worker.gardener.cloud/pool=cpu-worker,...`, right-hand side may be a regex, operators are `=|==|!=|=~|!~`
+- `pod_node_label_selector`, e.g. `topology.kubernetes.io/zone=world-1a,worker.gardener.cloud/pool=cpu-worker,...`, right-hand side may be a regex, operators are `=|==|!=|=~|!~`
 - `pod_label_selector`, e.g. `gardener.cloud/role=controlplane,gardener.cloud/role=vpa,...`, regular [pod label selector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors) (not interpreted by `chaosgarden`)
 - `pod_metadata_selector`, e.g. `namespace=kube-system,name=kube-apiserver.*,...`, right-hand side may be a regex, operators are `=|==|!=|=~|!~`
 - `pod_owner_selector`, e.g. `kind!=DaemonSet,name=kube-apiserver.*,...`, right-hand side may be a regex, operators are `=|==|!=|=~|!~`
