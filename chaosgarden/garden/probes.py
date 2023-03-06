@@ -33,7 +33,7 @@ def list_shoot_cluster_key_resources(
         lease_metadata_selector: str = None,
         configuration: Dict = None,
         secrets: Dict = None):
-    secrets, _ = resolve_secrets_and_zones(
+    secrets, _ = resolve_secrets_and_spec(
         configuration = configuration,
         secrets = secrets)
     return list_cluster_key_resources(
@@ -63,10 +63,15 @@ def run_shoot_cluster_health_probe(
         silent: bool = False,
         configuration: Dict = None,
         secrets: Dict = None):
-    secrets, zones = resolve_secrets_and_zones(
+    secrets, spec = resolve_secrets_and_spec(
         configuration = configuration,
         secrets = secrets)
-    thresholds = Thresholds.from_dict(thresholds).substitute_zones(dict(enumerate(sorted(zones)))).to_dict()
+    technical_zones = resolve_zones(spec)
+    kubernetes_zones = set()
+    for zone in technical_zones:
+        # substitute technical numbered zone with Kubernetes named zone that will be used as label at nodes (e.g. Azure)
+        kubernetes_zones.add(f'{spec.region}-{zone}' if zone.isnumeric() else zone)
+    thresholds = Thresholds.from_dict(thresholds).substitute_zones(dict(enumerate(sorted(kubernetes_zones)))).to_dict()
     return run_cluster_health_probe(
         duration = duration,
         thresholds = thresholds,
@@ -76,7 +81,7 @@ def run_shoot_cluster_health_probe(
 def rollback_shoot_cluster_health_probe(
         configuration: Dict = None,
         secrets: Dict = None):
-    secrets, _ = resolve_secrets_and_zones(
+    secrets, _ = resolve_secrets_and_spec(
         configuration = configuration,
         secrets = secrets)
     return rollback_cluster_health_probe(
@@ -87,7 +92,7 @@ def rollback_shoot_cluster_health_probe(
 # Helpers #
 ###########
 
-def resolve_secrets_and_zones(configuration, secrets) -> Dict:
+def resolve_secrets_and_spec(configuration, secrets) -> Dict:
     # prep
     configuration = Box(configuration)
     authenticator = to_authenticator(secrets)
@@ -99,4 +104,4 @@ def resolve_secrets_and_zones(configuration, secrets) -> Dict:
     kubeconfig = get_kubeconfig(garden_cluster = garden, project_namespace = project.spec.namespace, shoot_name = configuration.garden_shoot)
 
     # finally return everything we got
-    return {'kubeconfig_yaml': kubeconfig}, resolve_zones(shoot.spec)
+    return {'kubeconfig_yaml': kubeconfig}, shoot.spec

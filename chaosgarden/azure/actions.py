@@ -18,7 +18,7 @@ from chaosgarden.util import (norm_filters, validate_duration, validate_mode,
 from chaosgarden.util.terminator import Terminator
 from chaosgarden.util.threading import launch_thread
 
-NETWORK_SECURITY_GROUP_NAME_LAMBDA = lambda region, zone, filter: f'chaosgarden-block-{hashlib.md5(filter.encode("utf-8")).hexdigest()[:-16]}-{region}{zone}'
+NETWORK_SECURITY_GROUP_NAME_LAMBDA = lambda region, zone, filter: f'chaosgarden-block-{hashlib.md5(filter.encode("utf-8")).hexdigest()[:-16]}-{region}-{zone}'
 ORIGINAL_NETWORK_SECURITY_GROUP_NAME_TAG_NAME = 'gardener.cloud-chaos-original-network-security-group'
 ASSUMED_COMPUTE_TERMINATION_TIME_IN_SECONDS = 60
 ASSUMED_COMPUTE_RESTART_TIME_IN_SECONDS = 90
@@ -99,7 +99,7 @@ def run_compute_failure_simulation(
         reschedule_timedelta = timedelta(seconds = ASSUMED_COMPUTE_RESTART_TIME_IN_SECONDS + random.randint(min_runtime, max_runtime)) # next restart
 
     # mess up instances continuously until terminated
-    logger.info(f'Messing up virtual machines matching `{virtual_machines_filter}` in zone {region}{zone} ({mode} between {min_runtime}s and {max_runtime}s).')
+    logger.info(f'Messing up virtual machines matching `{virtual_machines_filter}` in zone {region}-{zone} ({mode} between {min_runtime}s and {max_runtime}s).')
     schedule_by_name = {}
     terminator = Terminator(duration)
     while not terminator.is_terminated():
@@ -159,7 +159,7 @@ def run_network_failure_simulation(
     client = azure_client(configuration = configuration, secrets = secrets)
 
     # prepare to block network traffic
-    logger.info(f'Partitioning virtual networks with virtual machines matching `{virtual_machines_filter}` in zone {region}{zone} ({mode}).')
+    logger.info(f'Partitioning virtual networks with virtual machines matching `{virtual_machines_filter}` in zone {region}-{zone} ({mode}).')
     blocking_nsg = create_blocking_network_security_group(client, resource_group, region, zone, virtual_machines_filter, mode)
 
     # block VMs continuously until terminated
@@ -192,7 +192,7 @@ def rollback_network_failure_simulation(
     client = azure_client(configuration = configuration, secrets = secrets)
 
     # rollback simulation gracefully
-    logger.info(f'Unpartitioning virtual networks with virtual machines matching `{virtual_machines_filter}` in zone {region}{zone} ({mode}).')
+    logger.info(f'Unpartitioning virtual networks with virtual machines matching `{virtual_machines_filter}` in zone {region}-{zone} ({mode}).')
     unblock_virtual_machines(client, resource_group, region, zone, virtual_machines_filter)
     delete_blocking_network_security_group(client, resource_group, region, zone, virtual_machines_filter)
 
@@ -212,7 +212,7 @@ def create_blocking_network_security_group(
     for mode in modes:
         nsg.security_rules.append(SecurityRule(
             name                       = f'DenyAll{mode.title()}',
-            description                = f'Deny {mode} network traffic while chaosgarden action runs that partitions networks with virtual machines in zone {region}{zone}'[:140],
+            description                = f'Deny {mode} network traffic while chaosgarden action runs that partitions networks with virtual machines in zone {region}-{zone}'[:140],
             priority                   = 100, # lowest possible rank
             access                     = 'Deny',
             direction                  = 'Inbound' if mode == 'ingress' else 'Outbound',
