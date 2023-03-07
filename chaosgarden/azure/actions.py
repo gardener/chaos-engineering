@@ -122,7 +122,7 @@ def run_compute_failure_simulation(
             logger.error(f'Virtual machines failed to {mode}: {type(e)}: {e}')
             # logger.error(traceback.format_exc())
         finally:
-            time.sleep(1)
+            time.sleep(2)
 
 
 #############################################
@@ -171,7 +171,7 @@ def run_network_failure_simulation(
             logger.error(f'Virtual machine blocking failed: {type(e)}: {e}')
             # logger.error(traceback.format_exc())
         finally:
-            time.sleep(1)
+            time.sleep(2)
 
     # rollback
     rollback_network_failure_simulation(mode, zone, filters, configuration, secrets)
@@ -276,13 +276,19 @@ def unblock_virtual_machines(
     # list all VMs in zone
     vms = {vm.id.lower(): vm for vm in list_vms(client, resource_group, zone, virtual_machines_filter)}
 
-    # list all NICs and reassociate blocked NICs with their original NSG (if any)
+    # list all NICs and reassociate blocked NICs with their original NSG (if any) and restart their virtual machines
+    vms_to_unblock = []
     operations = []
     for nic in list_nics(client, resource_group):
         if nic.virtual_machine.id.lower() in vms and ORIGINAL_NETWORK_SECURITY_GROUP_NAME_TAG_NAME in nic.tags:
             nic.network_security_group = nsgs[nic.tags[ORIGINAL_NETWORK_SECURITY_GROUP_NAME_TAG_NAME]]
             del nic.tags[ORIGINAL_NETWORK_SECURITY_GROUP_NAME_TAG_NAME]
             operations.append(update_nic(client, resource_group, nic))
+            vms_to_unblock.append(vms[nic.virtual_machine.id.lower()])
     if operations:
         wait_on_operations(operations)
-        logger.info(f'Unblocked {len(operations)} virtual machines.')
+        operations = []
+        for vm in vms_to_unblock:
+            operations.append(restart_vm(client, resource_group, zone, vm.name))
+        wait_on_operations(operations)
+        logger.info(f'Unblocked and restarted {len(vms_to_unblock)} virtual machines.')
