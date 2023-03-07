@@ -65,7 +65,7 @@ def web_hook_challenger():
                 'metadata': {'name': f'web-hook-probe-regional-{int(datetime.now(tz=timezone.utc).timestamp())}'},
                 'ready': False
                 }
-            crd_client.create_cluster_custom_object(body = hb, group = 'chaos.gardener.cloud', version = 'v1', plural = 'acknowledgedheartbeats', _request_timeout=30) # mutating web hook timeout seconds
+            crd_client.create_cluster_custom_object(body = hb, group = 'chaos.gardener.cloud', version = 'v1', plural = 'acknowledgedheartbeats', _request_timeout=15) # mutating web hook timeout seconds
         except ApiException as e:
             if e.status == 409:
                 pass # ignore conflict (resource already exists), which may happen if this probe runs with multiple replicas
