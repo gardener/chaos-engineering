@@ -335,7 +335,7 @@ webhooks:
   - 'v1'
   failurePolicy: Ignore
   sideEffects: None
-  timeoutSeconds: 30
+  timeoutSeconds: 15
   rules:
   - apiGroups:
     - 'chaos.gardener.cloud'
