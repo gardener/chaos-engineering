@@ -188,19 +188,20 @@ def dump_key_resources(cluster: Cluster, pod_node_label_selector: List = None, p
         lease_label_selector = lease_label_selector,
         lease_metadata_selector = lease_metadata_selector)
     logger.debug(f'Nodes:')
-    logger.debug(f'  {"NAME":<64} {"STATUS":<21} {"CREATED":<10} ZONE')
+    logger.debug(f'  {"NAME":<75} {"STATUS":<21} {"CREATED":<10} ZONE')
     for node in sorted(nodes, key = lambda node: (node.metadata.labels.get('topology.kubernetes.io/zone', 'N/A') if 'labels' in node.metadata else 'N/A', node.metadata.name)):
-        logger.debug(f'- {node.metadata.name:<64} {node_status(node):<21} {resource_age(node):<10} {node.metadata.labels.get("topology.kubernetes.io/zone", "N/A") if "labels" in node.metadata else "N/A"}')
+        logger.debug(f'- {node.metadata.name:<75} {node_status(node):<21} {resource_age(node):<10} {node.metadata.labels.get("topology.kubernetes.io/zone", "N/A") if "labels" in node.metadata else "N/A"}')
     logger.debug(f'Pods:')
-    logger.debug(f'  {"NAMESPACE/NAME":<64} {"STATUS":<21} {"CREATED":<10} ZONE (NODE)')
+    logger.debug(f'  {"NAMESPACE/NAME":<75} {"STATUS":<21} {"CREATED":<10} ZONE (NODE)')
     for pod in sorted(pods, key = lambda pod: (pod.metadata.namespace, pod.metadata.generateName if 'generateName' in pod.metadata else pod.metadata.name, pod.metadata.labels.get('topology.kubernetes.io/zone', 'N/A') if 'labels' in pod.metadata else 'N/A', pod.metadata.name)):
-        logger.debug(f'- {pod.metadata.namespace + "/" + pod.metadata.name:<64} {pod_status(pod):<21} {resource_age(pod):<10} {pod.metadata.labels.get("topology.kubernetes.io/zone", "N/A") if "labels" in pod.metadata else "N/A"} ({pod.spec.nodeName if "nodeName" in pod.spec else "N/A"})')
+        logger.debug(f'- {pod.metadata.namespace + "/" + pod.metadata.name:<75} {pod_status(pod):<21} {resource_age(pod):<10} {pod.metadata.labels.get("topology.kubernetes.io/zone", "N/A") if "labels" in pod.metadata else "N/A"} ({pod.spec.nodeName if "nodeName" in pod.spec else "N/A"})')
     logger.debug(f'Leases:')
-    logger.debug(f'  {"NAMESPACE/NAME":<64} {"ACQUIRED":<10} {"RENEWED":<10} {"CREATED":<10} HOLDER')
+    logger.debug(f'  {"NAMESPACE/NAME":<75} {"ACQUIRED":<10} {"RENEWED":<10} {"CREATED":<10} HOLDER')
     for lease in sorted(leases, key = lambda lease: (lease.metadata.namespace, pod.metadata.name)):
-        logger.debug(f'- {lease.metadata.namespace + "/" + lease.metadata.name:<64} {seconds2human(int(datetime.now().timestamp() - lease.spec.acquireTime.timestamp())) if "acquireTime" in lease.spec and lease.spec.acquireTime else "N/A":<10} {seconds2human(int(datetime.now().timestamp() - lease.spec.renewTime.timestamp())) if "renewTime" in lease.spec and lease.spec.renewTime else "N/A":<10} {resource_age(lease):<10} {lease.spec.holderIdentity if "holderIdentity" in lease.spec and lease.spec.holderIdentity else "N/A"}')
+        logger.debug(f'- {lease.metadata.namespace + "/" + lease.metadata.name:<75} {seconds2human(int(datetime.now().timestamp() - lease.spec.acquireTime.timestamp())) if "acquireTime" in lease.spec and lease.spec.acquireTime else "N/A":<10} {seconds2human(int(datetime.now().timestamp() - lease.spec.renewTime.timestamp())) if "renewTime" in lease.spec and lease.spec.renewTime else "N/A":<10} {resource_age(lease):<10} {lease.spec.holderIdentity if "holderIdentity" in lease.spec and lease.spec.holderIdentity else "N/A"}')
 
 def setup(cluster: Cluster):
+    # identify zones
     zones = set()
     for node in cluster.boxed(cluster.sanitize_result(cluster.client(API.CoreV1).list_node(_request_timeout = 60).to_dict())):
         try:
@@ -208,8 +209,12 @@ def setup(cluster: Cluster):
         except:
             pass
     logger.info('Cluster spread across the following detected zones: ' + ', '.join(sorted(zones)))
+
+    # load to be created resources
     resources = yaml.load_all(render(zones = zones), Loader = yaml.FullLoader)
     resources = list(resources)
+
+    # create all resources (in template order)
     for resource in resources:
         try:
             api_version = resource['apiVersion']
@@ -255,8 +260,41 @@ def setup(cluster: Cluster):
             raise e
 
 def cleanup(cluster: Cluster):
+    # load to be deleted resources
     resources = yaml.load_all(render(), Loader = yaml.FullLoader)
     resources = list(resources)
+
+    # delete pod-based resources, so that all "active" components are terminated before the rest (service accounts, custom resource definitions, ...)
+    namespace = None
+    client = cluster.client(API.AppsV1)
+    for resource in resources:
+        if resource['kind'].lower() == 'deployment': # it is assumed, that only deployments are used
+            try:
+                client.delete_namespaced_deployment(
+                    name = resource['metadata']['name'],
+                    namespace = resource['metadata']['namespace'],
+                    propagation_policy = 'Foreground',
+                    _request_timeout = 60)
+                namespace = resource['metadata']['namespace'] # it is assumed, that only one namespace is used
+                logger.info(f'Deleting probe deployment {resource["metadata"]["namespace"]}/{resource["metadata"]["name"]}...')
+            except Exception:
+                pass # ignore as this is best-effort
+    if namespace:
+        client = cluster.client(API.CoreV1)
+        try:
+            last_pod_count = 0
+            new_pod_count = len(client.list_namespaced_pod(namespace = namespace).items)
+            while new_pod_count > 0:
+                if new_pod_count != last_pod_count:
+                    logger.info(f'Waiting for {new_pod_count} pods to be deleted...')
+                last_pod_count = new_pod_count
+                time.sleep(1)
+                new_pod_count = len(client.list_namespaced_pod(namespace = namespace).items)
+        except Exception:
+            pass # ignore as this is best-effort
+
+    # delete all resources (in reverse template order)
+    logger.info(f'Deleting probe resources...')
     resources.reverse()
     resources_present = True
     while resources_present:
@@ -302,10 +340,23 @@ def cleanup(cluster: Cluster):
         if resources_present:
             time.sleep(1)
 
-def read_custom_resources(cluster, plural):
+def read_events(cluster: Cluster):
     while True:
         try:
-            return cluster.boxed(cluster.sanitize_result(cluster.client(API.CustomResources).list_cluster_custom_object(group = 'chaos.gardener.cloud', version = 'v1', plural = plural, _request_timeout = 60)))
+            return cluster.sanitize_result(cluster.client(API.EventsV1).list_event_for_all_namespaces(_request_timeout = 60).to_dict())
+        except ApiException as e:
+            logger.error(f'Reading events failed: {type(e)}: {e}')
+            # logger.error(traceback.format_exc())
+            time.sleep(5)
+        except Exception as e:
+            logger.error(f'Reading events failed: {type(e)}: {e}')
+            # logger.error(traceback.format_exc())
+            raise e
+
+def read_custom_resources(cluster: Cluster, plural: str):
+    while True:
+        try:
+            return cluster.sanitize_result(cluster.client(API.CustomResources).list_cluster_custom_object(group = 'chaos.gardener.cloud', version = 'v1', plural = plural, _request_timeout = 60))
         except ApiException as e:
             logger.error(f'Reading custom resources failed: {type(e)}: {e}')
             # logger.error(traceback.format_exc())
@@ -315,8 +366,42 @@ def read_custom_resources(cluster, plural):
             # logger.error(traceback.format_exc())
             raise e
 
-def generate_metrics(cluster: Cluster, start_timestamp: datetime, stop_timestamp: datetime, successful_api_probe_heartbeats: List[Dict], failed_api_probe_heartbeats: List[Dict]):
-    # put together heartbeats
+def generate_metrics(cluster: Cluster, start_timestamp: int, stop_timestamp: int, successful_api_probe_heartbeats: List[Dict], failed_api_probe_heartbeats: List[Dict]):
+    # read events and dump them
+    events = []
+    regarding_max_width = 0
+    reason_max_width = 0
+    for event in read_events(cluster):
+        try:
+            severity = event['type'][0] if 'type' in event and event['type'] else '?'
+            if 'metadata' in event and 'creation_timestamp' in event['metadata'] and event['metadata']['creation_timestamp']:
+                timestamp = event['metadata']['creation_timestamp'].timestamp()
+            elif 'event_time' in event and event['event_time']:
+                timestamp = event['event_time'].timestamp()
+            else:
+                timestamp = 0
+            if timestamp > 0 and (timestamp < (start_timestamp - 5) or timestamp > (stop_timestamp + 15)):
+                continue
+            if 'regarding' in event and event['regarding']:
+                regarding = \
+                    ((event['regarding']['kind'].lower() + '/') if 'kind' in event['regarding'] and event['regarding']['kind'] else '') + \
+                    ((event['regarding']['namespace'].lower() + '/') if 'namespace' in event['regarding'] and event['regarding']['namespace'] else '') + \
+                    ((event['regarding']['name'].lower()) if 'name' in event['regarding'] and event['regarding']['name'] else 'N/A')
+            else:
+                regarding = 'N/A'
+            regarding_max_width = max(regarding_max_width, len(regarding))
+            reason = event['reason'] if 'reason' in event and event['reason'] else 'N/A'
+            reason_max_width = max(reason_max_width, len(reason))
+            note = event['note'] if 'note' in event and event['note'] else 'N/A'
+            events.append(Box({'severity': severity, 'timestamp': timestamp, 'regarding': regarding, 'reason': reason, 'note': note}))
+        except Exception as e:
+            events.append(Box({'severity': '!', 'timestamp': 0, 'regarding': 'event', 'reason': e, 'note': event}))
+    logger.debug(f'Events ({len(events)}):')
+    logger.debug(f'  (S) TIME     {"RESOURCE":<{regarding_max_width}} {"REASON":<{reason_max_width}} NOTE')
+    for event in sorted(events, key = lambda event: event['timestamp']):
+        logger.debug(f'- ({event.severity}) {datetime.fromtimestamp(event.timestamp).strftime("%H:%M:%S")} {event.regarding:<{regarding_max_width}} {event.reason:<{reason_max_width}} {event.note}')
+
+    # read heartbeats and put them together
     heartbeats = list(failed_api_probe_heartbeats)                              # heartbeats that failed to reach the API server, but we know of (what was sent successfully will be collected with the next line)
     heartbeats.extend(read_custom_resources(cluster, 'heartbeats'))             # heartbeats that were sent by any probe, here or cluster-internally (we see only what successfully made it to the API server from within the cluster)
     heartbeats.extend(read_custom_resources(cluster, 'acknowledgedheartbeats')) # heartbeats that were acknowledged by the cluster-internal web hook (we see only what successfully made it to the API server from within the cluster)

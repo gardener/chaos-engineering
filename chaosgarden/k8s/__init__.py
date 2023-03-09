@@ -123,7 +123,7 @@ def filter_leases(
         leases = cluster.client(API.CoordinationV1).list_lease_for_all_namespaces(label_selector = lease_label_selector, _request_timeout = 60)
     leases = cluster.boxed(cluster.sanitize_result(cluster.convert_snakecase_to_camelcase_dict_keys(leases.to_dict())))
 
-    # filter leases by lease metadata and owner selector
+    # filter leases by lease metadata
     leases = SelectorRequirement.filter_by_selector(lease_metadata_selector, [(lease, lease.metadata) for lease in leases])
 
     # return filtered leases

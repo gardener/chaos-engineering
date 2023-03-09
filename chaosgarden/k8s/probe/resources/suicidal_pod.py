@@ -40,6 +40,7 @@ if __name__ == '__main__':
         print(f'Heart beat sent successfully')
     except Exception as e:
         print(f'Heart beat not sent: {type(e)}: {e}')
+        raise e
 
     # kill this pod
     try:
