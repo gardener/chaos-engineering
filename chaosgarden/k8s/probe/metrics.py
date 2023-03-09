@@ -5,32 +5,33 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from functools import reduce
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 from logzero import logger
 
 from chaosgarden.k8s.probe.thresholds import Thresholds
 
 INITIAL_FAILURE_EXCLUSION = defaultdict(lambda: 0, **{
-    'web-hook': 45})
-INITIAL_GAP_TOLERATION = defaultdict(lambda: 20, **{
-    'api': 15,
-    'api-external': 20,
-    'api-internal': 20,
-    'dns-external': 20,
-    'dns-internal': 20,
     'dns-management': 60,
+    'web-hook': 50})
+INITIAL_GAP_TOLERATION = defaultdict(lambda: 30, **{
+    'api': 15,
+    'api-external': 30,
+    'api-internal': 30,
+    'dns-external': 30,
+    'dns-internal': 30,
+    'dns-management': 60,
+    'pod-lifecycle': 40,
+    'web-hook': 50})
+REGULAR_GAP_TOLERATION = defaultdict(lambda: 15, **{
+    'api': 15,
+    'api-external': 15,
+    'api-internal': 15,
+    'dns-external': 15,
+    'dns-internal': 15,
+    'dns-management': 30,
     'pod-lifecycle': 30,
-    'web-hook': 45})
-REGULAR_GAP_TOLERATION = defaultdict(lambda: 10, **{
-    'api': 10,
-    'api-external': 10,
-    'api-internal': 10,
-    'dns-external': 10,
-    'dns-internal': 10,
-    'dns-management': 20,
-    'pod-lifecycle': 30,
-    'web-hook': 15})
+    'web-hook': 30})
 
 
 class HeartbeatState(Enum):
@@ -42,14 +43,14 @@ class HeartbeatState(Enum):
 class HeartbeatStateSeries:
     def __init__(self, probe: str):
         self._probe: str = probe
-        self._series: Dict[int, HeartbeatState] = {}
+        self._series: Dict[int, Tuple[HeartbeatState, str]] = {}
         self._gaps = 0
 
     def __iter__(self):
         return iter(sorted(self._series.items()))
 
-    def record(self, timestamp: int, ready: HeartbeatState):
-        self._series[timestamp] = ready
+    def record(self, timestamp: int, ready: HeartbeatState, payload: str = None):
+        self._series[timestamp] = (ready, payload)
         if ready == HeartbeatState.UNKNOWN:
             self._gaps += 1
 
@@ -60,7 +61,7 @@ class HeartbeatStateSeries:
         return sorted([timestamp for timestamp in self._series.keys() if timestamp >= from_timestamp and timestamp < to_timestamp])
 
     def get_state(self, timestamp):
-        return self._series[timestamp]
+        return self._series[timestamp][0]
 
     def get_gaps(self):
         return self._gaps
@@ -82,9 +83,9 @@ class HeartbeatStateSeries:
         # insert first and/or last gap heartbeat if missing
         timestamps = self.get_timestamps()
         if timestamps[0] > from_timestamp + initial_gap:
-            self.record(from_timestamp + initial_gap, HeartbeatState.UNKNOWN)
+            self.record(from_timestamp + initial_gap, HeartbeatState.UNKNOWN, 'Gap (Initial)')
         if timestamps[-1] + regular_gap < to_timestamp:
-            self.record(to_timestamp, HeartbeatState.UNKNOWN)
+            self.record(to_timestamp, HeartbeatState.UNKNOWN, 'Gap (Final)')
 
         # insert intermediate gap heartbeats if missing
         timestamps = self.get_timestamps()
@@ -92,12 +93,12 @@ class HeartbeatStateSeries:
         for next_timestamp in timestamps[1:]:
             if next_timestamp > prev_timestamp + regular_gap:
                 for timestamp in range(prev_timestamp + regular_gap, next_timestamp, regular_gap):
-                    self.record(timestamp, HeartbeatState.UNKNOWN)
+                    self.record(timestamp, HeartbeatState.UNKNOWN, 'Gap')
             prev_timestamp = next_timestamp
 
     def dump(self):
-        for timestamp, state in self:
-            logger.debug(f'    - {state.value:>9} at {datetime.fromtimestamp(timestamp).strftime("%H:%M:%S")}')
+        for timestamp, (state, payload) in self:
+            logger.debug(f'    - {state.value:>9} at {datetime.fromtimestamp(timestamp).strftime("%H:%M:%S")}' + (f' ({payload})' if payload else ''))
 
 
 @dataclass
@@ -158,8 +159,8 @@ class MetricsForZone:
     def get_zone_name(self):
         return self._zone
 
-    def record_heartbeat(self, timestamp, ready):
-        self._heartbeats.record(timestamp, ready)
+    def record_heartbeat(self, timestamp, ready, payload = None):
+        self._heartbeats.record(timestamp, ready, payload)
 
     def record_heartbeats_sent(self, sent):
         self._heartbeats_sent = sent
@@ -241,9 +242,12 @@ class Metrics:
     def __init__(self, heartbeats: List[Dict], from_timestamp: int, to_timestamp: int):
         self._probes: Dict[str, MetricsForZoneCollection] = {}
         for heartbeat in heartbeats:
-            segments = re.match(r'^(.+)-probe-(.+)-([0-9]+)', heartbeat.metadata.name.lower())
+            segments = re.match(r'^(.+)-probe-(.+)-([0-9]+)', heartbeat['metadata']['name'].lower())
             probe, zone, timestamp = segments.group(1), segments.group(2), int(segments.group(3))
-            self.get_metrics_for_probe(probe).get_metrics_for_zone(zone).record_heartbeat(timestamp, HeartbeatState.READY if heartbeat.ready else HeartbeatState.NOT_READY)
+            if timestamp >= (from_timestamp - 5) and timestamp <= (to_timestamp + 15):
+                self.get_metrics_for_probe(probe).get_metrics_for_zone(zone).record_heartbeat(timestamp, HeartbeatState.READY if heartbeat['ready'] else HeartbeatState.NOT_READY, heartbeat['payload'] if 'payload' in heartbeat and heartbeat['payload'] else None)
+            else:
+                pass # rejecting {probe} heartbeat from zone {zone} with timestamp {datetime.fromtimestamp(timestamp).strftime("%H:%M:%S")}
         for probe in self:
             probe.compute(from_timestamp, to_timestamp)
 

@@ -22,7 +22,7 @@ spec:
           type: object
           properties:
             ready:
-              description: Proby readiness (for non API server probes that have their own readiness)
+              description: Probe readiness (for non API server probes that have their own readiness)
               type: boolean
             payload:
               description: Probe payload (any additional payload data specific to a probe)
@@ -51,7 +51,7 @@ spec:
           type: object
           properties:
             ready:
-              description: Proby readiness (for non API server probes that have their own readiness)
+              description: Probe readiness (for non API server probes that have their own readiness)
               type: boolean
             payload:
               description: Probe payload (any additional payload data specific to a probe)
@@ -165,30 +165,14 @@ spec:
         command:
         - 'bash'
         - '-c'
-        - 'pip install kubernetes==24.2.0 Flask==2.2.2; touch /.started; python -u /app/probe-pod.py'
-        startupProbe:
-          exec:
-            command:
-            - 'cat'
-            - '/.started'
-          initialDelaySeconds: 1
-          periodSeconds: 1
-          failureThreshold: 60 # after this many times, container will be restarted
-        livenessProbe:
-          httpGet:
-            scheme: 'HTTPS'
-            port: 8080
-            path: '/livez'
-          initialDelaySeconds: 1
-          periodSeconds: 1
-          failureThreshold: 10 # after this many times, container will be restarted
+        - 'pip install kubernetes==24.2.0 Flask==2.2.2; python -u /app/probe-pod.py'
         readinessProbe:
           httpGet:
             scheme: 'HTTPS'
             port: 8080
             path: '/readyz'
-          initialDelaySeconds: 1
-          periodSeconds: 1
+          initialDelaySeconds: 5
+          periodSeconds: 5
           failureThreshold: 1 # after this many times, container will become NotReady
         ports:
         - containerPort: 8080
@@ -221,7 +205,7 @@ spec:
         effect: "NoExecute"
         tolerationSeconds: 0
       serviceAccountName: probe
-      terminationGracePeriodSeconds: 0
+      terminationGracePeriodSeconds: 60
       volumes:
         - name: probe
           configMap:

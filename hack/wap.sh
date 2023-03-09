@@ -1,5 +1,12 @@
 #!/bin/bash -e
 
+function filter_hbs_for() {
+  echo
+  echo "$1" | head -1
+  echo "$1" | grep -E "$2" | tac | head -3
+}
+export -f filter_hbs_for
+
 function show_resources() {
   echo "$(date) on ${GARDEN_PROJECT}/${GARDEN_SHOOT} shoot (focus on probe)"
   echo
@@ -8,12 +15,28 @@ function show_resources() {
   kubectl -n chaos-garden-probe get pod -l 'chaos.gardener.cloud/role in (probe, probe-suicidal-pods, repl)' -o wide
   echo
   kubectl -n chaos-garden-probe get service,ep -o wide
-  echo
-  echo "NAME                                            READY    PAYLOAD"
-  kubectl get hb --sort-by={metadata.creationTimestamp} --no-headers -o=custom-columns='NAME:.metadata.name,READY:.ready,PAYLOAD:.payload' | tac | head -21   # last 3 x 7 probes
-  echo
-  echo "NAME                            READY   PAYLOAD"
-  kubectl get ahb --sort-by={metadata.creationTimestamp} --no-headers -o=custom-columns='NAME:.metadata.name,READY:.ready,PAYLOAD:.payload' | tac | head -9   # last 3 x 3 zones
+
+  hbs=$(kubectl get hb --sort-by={metadata.creationTimestamp} -o=custom-columns='NAME:.metadata.name,READY:.ready,PAYLOAD:.payload' 2>&1)
+  if echo $hbs | grep -q -F "Error from server (NotFound)"; then
+    echo
+    echo "No heartbeats found."
+  else
+    filter_hbs_for "$hbs" "^api-probe-regional-.*"
+    filter_hbs_for "$hbs" "^api-external-probe-.*"
+    filter_hbs_for "$hbs" "^api-internal-probe-.*"
+    filter_hbs_for "$hbs" "^dns-external-probe-.*"
+    filter_hbs_for "$hbs" "^dns-internal-probe-.*"
+    filter_hbs_for "$hbs" "^dns-management-probe-.*"
+    filter_hbs_for "$hbs" "^pod-lifecycle-probe-.*"
+  fi
+
+  hbs=$(kubectl get ahb --sort-by={metadata.creationTimestamp} -o=custom-columns='NAME:.metadata.name,READY:.ready,PAYLOAD:.payload' 2>&1)
+  if echo $hbs | grep -q -F "Error from server (NotFound)"; then
+    echo
+    echo "No ack heartbeats found."
+  else
+    filter_hbs_for "$hbs" "^web-hook-probe-regional-.*"
+  fi
 }
 export -f show_resources
 

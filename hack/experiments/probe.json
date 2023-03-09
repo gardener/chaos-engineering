@@ -1,10 +1,10 @@
 {
-    "title": "run-shoot-cluster-health-probe",
-    "description": "run-shoot-cluster-health-probe",
+    "title": "run-cluster-health-probe",
+    "description": "run-cluster-health-probe",
     "method": [
         {
             "type": "probe",
-            "name": "run-shoot-cluster-health-probe",
+            "name": "run-cluster-health-probe",
             "tolerance": true,
             "provider": {
                 "type": "python",
@@ -20,7 +20,7 @@
     "rollbacks": [
         {
             "type": "action",
-            "name": "rollback-shoot-cluster-health-probe",
+            "name": "rollback-cluster-health-probe",
             "provider": {
                 "type": "python",
                 "module": "chaosgarden.garden.probes",

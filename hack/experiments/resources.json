@@ -1,0 +1,26 @@
+{
+    "title": "list-cluster-key-resources",
+    "description": "list-cluster-key-resources",
+    "method": [
+        {
+            "type": "probe",
+            "name": "list-cluster-key-resources",
+            "tolerance": true,
+            "provider": {
+                "type": "python",
+                "module": "chaosgarden.garden.probes",
+                "func": "list_shoot_cluster_key_resources"
+            }
+        }
+    ],
+    "configuration": {
+        "garden_project": {
+            "type": "env",
+            "key": "GARDEN_PROJECT"
+        },
+        "garden_shoot": {
+            "type": "env",
+            "key": "GARDEN_SHOOT"
+        }
+    }
+}

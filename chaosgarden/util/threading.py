@@ -76,7 +76,7 @@ def install_signal_handlers():
 
 def signal_handler_called(signal_number = None, stack_frame = None): # signature implements signal.signal() handler interface
     if not __in_termination:
-        logger.info(f'Signal handler invoked. Aborting now.')
+        logger.info(f'Signal handler invoked ({signal.Signals(signal_number).name}). Aborting now.')
         terminate_all_threads()
 
 def current_time():
