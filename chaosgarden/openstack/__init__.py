@@ -1,5 +1,5 @@
+import openstack
 from logzero import logger
-from openstack import connection
 
 
 def openstack_connection(configuration, secrets):
@@ -7,13 +7,13 @@ def openstack_connection(configuration, secrets):
     # https://docs.openstack.org/openstacksdk/latest/user/connection.html#using-only-keyword-arguments
     # https://opendev.org/openstack/openstacksdk/src/branch/master/openstack/connection.py
     # https://opendev.org/openstack/openstacksdk/src/branch/master/openstack/config/loader.py
+    # https://stackoverflow.com/questions/73649308/openstack-python-api-how-create-a-connection-using-application-credentials
     # https://docs.openstack.org/openstacksdk/latest/user/proxies/compute.html
     # https://opendev.org/openstack/openstacksdk/src/branch/master/openstack/compute/v2
-    return connection.Connection(
+    return openstack.connect(
         region_name         = configuration['openstack_region'],
-        auth                = secrets,
         compute_api_version = '2',
-        identity_interface  = 'internal')
+        **secrets)
 
 def list_servers(conn, zone, status, filter):
     # https://docs.openstack.org/openstacksdk/latest/user/guides/compute.html#list-servers

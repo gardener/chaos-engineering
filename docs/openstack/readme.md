@@ -58,7 +58,7 @@ The [upstream open source incubator extension](https://github.com/chaostoolkit-i
 - `project_domain_name`: Domain name for project
 - `project_name`: Project name
 
-The above mentioned OpenStack SDK probably also supports other parameters, but those were not tested.
+The above mentioned OpenStack SDK also supports other parameters (e.g. [application credenntials](https://docs.openstack.org/keystone/queens/user/application_credentials.html) instead of `username` and `password`), but those were not tested.
 
 ## Examples
 

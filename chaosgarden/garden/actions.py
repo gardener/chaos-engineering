@@ -301,6 +301,12 @@ class Target(Enum):
     SystemComponents  = 'SystemComponents'
     Workers           = 'Workers'
 
+def b64decode_and_add(source_dict, source_key, dest_dict, dest_key, fail_if_missing = True):
+    if source_key in source_dict:
+        dest_dict[dest_key] = base64.b64decode(source_dict[source_key]).decode('utf-8')
+    elif fail_if_missing:
+        raise ValueError(f'Required key {source_key} missing!')
+
 def resolve_zones(spec: Dict) -> Set:
     zones = set()
     for worker in spec.provider.workers:
@@ -377,22 +383,21 @@ def resolve_cloud_provider_simulation(zone, configuration, secrets) -> Tuple[Cal
             'vpcs': [{'Name': 'tag-key', 'Values': [f'kubernetes.io/cluster/{shoot.status.technicalID}']}]}
         configuration = {
             'aws_region': shoot.spec.region}
-        secrets = {
-            'aws_access_key_id': base64.b64decode(credentials.accessKeyID).decode('utf-8'),
-            'aws_secret_access_key': base64.b64decode(credentials.secretAccessKey).decode('utf-8')}
+        secrets = {}
+        b64decode_and_add(credentials, 'accessKeyID', secrets, 'aws_access_key_id')
+        b64decode_and_add(credentials, 'secretAccessKey', secrets, 'aws_secret_access_key')
     elif cloud_provider == 'azure':
         cloud = configuration.get('azure_cloud', 'AZURE_PUBLIC_CLOUD')
         filters = {
             'virtual_machines': f'where tags contains "kubernetes.io-cluster-{shoot.status.technicalID}"'}
         configuration = {
             'azure_region': shoot.spec.region,
-            'azure_resource_group': shoot.spec.provider.infrastructureConfig.resourceGroup.name if 'resourceGroup' in shoot.spec.provider.infrastructureConfig else shoot.status.technicalID,
-            'azure_subscription_id': base64.b64decode(credentials['subscriptionID']).decode('utf-8')}
-        secrets = {
-            'azure_cloud':   cloud,
-            'client_id':     base64.b64decode(credentials['clientID']).decode('utf-8'),
-            'client_secret': base64.b64decode(credentials['clientSecret']).decode('utf-8'),
-            'tenant_id':     base64.b64decode(credentials['tenantID']).decode('utf-8')}
+            'azure_resource_group': shoot.spec.provider.infrastructureConfig.resourceGroup.name if 'resourceGroup' in shoot.spec.provider.infrastructureConfig else shoot.status.technicalID}
+        b64decode_and_add(credentials, 'subscriptionID', configuration, 'azure_subscription_id')
+        secrets = {'azure_cloud': cloud}
+        b64decode_and_add(credentials, 'clientID', secrets, 'client_id')
+        b64decode_and_add(credentials, 'clientSecret', secrets, 'client_secret')
+        b64decode_and_add(credentials, 'tenantID', secrets, 'tenant_id')
     elif cloud_provider == 'gcp':
         filters = {
             'instances': f'labels.name={configuration.garden_shoot} AND labels.node_kubernetes_io_role=node AND labels.worker_gardener_cloud_pool:*', # tags such as `tags.items=kubernetes-io-cluster-shoot--core--chaos-gcp-3z` using our technical ID do not work, see https://issuetracker.google.com/issues/120255780#comment14
@@ -405,13 +410,23 @@ def resolve_cloud_provider_simulation(zone, configuration, secrets) -> Tuple[Cal
             'servers': {'metadata': 'kubernetes.io-cluster-shoot--core--chaos-os-2z'}}
         configuration = {
             'openstack_region': shoot.spec.region}
-        secrets = {
-            'auth_url': base64.b64decode(credentials['authURL']).decode('utf-8'),
-            'user_domain_name': base64.b64decode(credentials['domainName']).decode('utf-8'),
-            'username': base64.b64decode(credentials['username']).decode('utf-8'),
-            'password': base64.b64decode(credentials['password']).decode('utf-8'),
-            'project_domain_name': base64.b64decode(credentials['domainName']).decode('utf-8'),
-            'project_name': base64.b64decode(credentials['tenantName']).decode('utf-8')}
+        secrets = {}
+        b64decode_and_add(credentials, 'authURL', secrets, 'auth_url')
+        if 'applicationCredentialSecret' in credentials: # see https://docs.openstack.org/keystone/queens/user/application_credentials.html#using-application-credentials
+            secrets['auth_type'] = 'v3applicationcredential'
+            b64decode_and_add(credentials, 'applicationCredentialSecret', secrets, 'application_credential_secret')
+            if 'applicationCredentialID' in credentials:
+                b64decode_and_add(credentials, 'applicationCredentialID', secrets, 'application_credential_id')
+            else:
+                b64decode_and_add(credentials, 'domainName', secrets, 'user_domain_name')
+                b64decode_and_add(credentials, 'username', secrets, 'username')
+                b64decode_and_add(credentials, 'applicationCredentialName', secrets, 'application_credential_name')
+        else:
+            b64decode_and_add(credentials, 'domainName', secrets, 'user_domain_name')
+            b64decode_and_add(credentials, 'username', secrets, 'username')
+            b64decode_and_add(credentials, 'password', secrets, 'password')
+            b64decode_and_add(credentials, 'domainName', secrets, 'project_domain_name')
+            b64decode_and_add(credentials, 'projectName' if 'projectName' in credentials else 'tenantName', secrets, 'project_name')
     elif cloud_provider == 'vsphere':
         filters = {
             'virtual_machines': {
@@ -430,11 +445,11 @@ def resolve_cloud_provider_simulation(zone, configuration, secrets) -> Tuple[Cal
             'vsphere_vcenter_insecure': region.vsphereInsecureSSL,
             'vsphere_nsxt_server': region.nsxtHost,
             'vsphere_nsxt_insecure': region.nsxtInsecureSSL}
-        secrets = {
-            'vsphere_username': base64.b64decode(credentials['vsphereUsername']).decode('utf-8'),
-            'vsphere_password': base64.b64decode(credentials['vspherePassword']).decode('utf-8'),
-            'nsxt_username': base64.b64decode(credentials['nsxtUsername']).decode('utf-8'),
-            'nsxt_password': base64.b64decode(credentials['nsxtPassword']).decode('utf-8')}
+        secrets = {}
+        b64decode_and_add(credentials, 'vsphereUsername', secrets, 'vsphere_username')
+        b64decode_and_add(credentials, 'vspherePassword', secrets, 'vsphere_password')
+        b64decode_and_add(credentials, 'nsxtUsername', secrets, 'nsxt_username')
+        b64decode_and_add(credentials, 'nsxtPassword', secrets, 'nsxt_password')
     else:
         raise ValueError(f'Cloud provider (was {cloud_provider}) unknown/not supported!')
 
