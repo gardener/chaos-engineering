@@ -8,9 +8,11 @@ This is a collection of scripts and resources that helps with local development.
 
 - `chaos.sh`: Run experiment in [`/hack/experiments`](/hack/experiments) specified by name with `chaostoolkit` CLI using local sources
 - `experiments`: Folder with experiments:
+  - `assess.json`: Assess filters impact
   - `compute.json`: Run compute failure simulation with prior assessment/confirmation
   - `network.json`: Run network failure simulation with prior assessment/confirmation
   - `probe.json`: Launch cluster health probe
+  - `resources.json`: List cluster key resources
 - `logs.sh`: Show logs of cluster health probe pods
 - `readme.md`: This document
 - `repl_deploy.sh`: Deploy a Python pod into a cluster to try out operations from within the cluster
