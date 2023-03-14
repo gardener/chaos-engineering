@@ -111,10 +111,13 @@ def wait_on_operations(operations):
 def wait_on_operation(operation):
     # https://learn.microsoft.com/en-us/python/api/azure-core/azure.core.polling.lropoller
     logger.debug(f'Waiting on operation.')
-    while not operation.done():
-        time.sleep(1)
-    logger.debug(f'Operation returned with status {operation.status()} and result: {operation.result()}')
-    if operation.status().lower() == 'succeeded':
-        return operation.result()
-    else:
-        raise RuntimeError(f'Operation failed: {operation.status()}: {operation.result()}')
+    try:
+        while not operation.done():
+            time.sleep(1)
+        logger.debug(f'Operation returned with status {operation.status()} and result: {operation.result()}')
+        if operation.status().lower() == 'succeeded':
+            return operation.result()
+        else:
+            raise RuntimeError(f'Operation returned with status {operation.status()} and result: {operation.result()}')
+    except Exception as e:
+        logger.error(f'Operation failed: {type(e)}: {e}')
