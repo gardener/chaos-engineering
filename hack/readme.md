@@ -13,6 +13,7 @@ This is a collection of scripts and resources that helps with local development.
   - `network.json`: Run network failure simulation with prior assessment/confirmation
   - `probe.json`: Launch cluster health probe
   - `resources.json`: List cluster key resources
+  - `rollback.json`: Rollback (all known/possible) leftovers (urgent catch-all rollback)
 - `logs.sh`: Show logs of cluster health probe pods
 - `readme.md`: This document
 - `repl_deploy.sh`: Deploy a Python pod into a cluster to try out operations from within the cluster

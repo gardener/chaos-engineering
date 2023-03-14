@@ -1,0 +1,65 @@
+{
+    "title": "rollback-leftovers",
+    "description": "rollback-leftovers",
+    "method": [],
+    "rollbacks": [
+        {
+            "type": "action",
+            "name": "rollback-network-failure-simulation-in-zone-0",
+            "provider": {
+                "type": "python",
+                "module": "chaosgarden.garden.actions",
+                "func": "rollback_cloud_provider_network_failure_simulation",
+                "arguments": {
+                    "mode": "total",
+                    "zone": 0
+                }
+            }
+        },
+        {
+            "type": "action",
+            "name": "rollback-network-failure-simulation-in-zone-1",
+            "provider": {
+                "type": "python",
+                "module": "chaosgarden.garden.actions",
+                "func": "rollback_cloud_provider_network_failure_simulation",
+                "arguments": {
+                    "mode": "total",
+                    "zone": 1
+                }
+            }
+        },
+        {
+            "type": "action",
+            "name": "rollback-network-failure-simulation-in-zone-2",
+            "provider": {
+                "type": "python",
+                "module": "chaosgarden.garden.actions",
+                "func": "rollback_cloud_provider_network_failure_simulation",
+                "arguments": {
+                    "mode": "total",
+                    "zone": 2
+                }
+            }
+        },
+        {
+            "type": "action",
+            "name": "rollback-shoot-cluster-health-probe",
+            "provider": {
+                "type": "python",
+                "module": "chaosgarden.garden.probes",
+                "func": "rollback_shoot_cluster_health_probe"
+            }
+        }
+    ],
+    "configuration": {
+        "garden_project": {
+            "type": "env",
+            "key": "GARDEN_PROJECT"
+        },
+        "garden_shoot": {
+            "type": "env",
+            "key": "GARDEN_SHOOT"
+        }
+    }
+}
