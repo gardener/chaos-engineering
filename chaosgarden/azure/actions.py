@@ -253,13 +253,20 @@ def block_virtual_machines(
         if nic.virtual_machine and nic.virtual_machine.id.lower() in vms and ORIGINAL_NETWORK_SECURITY_GROUP_NAME_TAG_NAME not in nic.tags:
             nic.tags[ORIGINAL_NETWORK_SECURITY_GROUP_NAME_TAG_NAME] = nic.network_security_group.id.lower() if nic.network_security_group else ''
             nic.network_security_group = blocking_nsg
-            operations.append(update_nic(client, resource_group, nic))
-            vms_to_block.append(vms[nic.virtual_machine.id.lower()])
+            try:
+                operations.append(update_nic(client, resource_group, nic))
+                vms_to_block.append(vms[nic.virtual_machine.id.lower()])
+            except:
+                # probably a consistency issue/race condition/outdated cache in ARM, and if it's not, we will try again next time
+                pass
     if operations:
         wait_on_operations(operations)
         operations = []
         for vm in vms_to_block:
-            operations.append(restart_vm(client, resource_group, zone, vm.name))
+            try:
+                operations.append(restart_vm(client, resource_group, zone, vm.name))
+            except Exception as e:
+                logger.error(f'Failed to restart VM {vm.name}: {type(e)}: {e}')
         wait_on_operations(operations)
         logger.info(f'Blocked and restarted {len(vms_to_block)} virtual machines.')
 
@@ -280,15 +287,25 @@ def unblock_virtual_machines(
     vms_to_unblock = []
     operations = []
     for nic in list_nics(client, resource_group):
-        if nic.virtual_machine.id.lower() in vms and ORIGINAL_NETWORK_SECURITY_GROUP_NAME_TAG_NAME in nic.tags:
+        if nic.virtual_machine and nic.virtual_machine.id.lower() in vms and ORIGINAL_NETWORK_SECURITY_GROUP_NAME_TAG_NAME in nic.tags:
             nic.network_security_group = nsgs[nic.tags[ORIGINAL_NETWORK_SECURITY_GROUP_NAME_TAG_NAME]]
             del nic.tags[ORIGINAL_NETWORK_SECURITY_GROUP_NAME_TAG_NAME]
-            operations.append(update_nic(client, resource_group, nic))
-            vms_to_unblock.append(vms[nic.virtual_machine.id.lower()])
+            try:
+                operations.append(update_nic(client, resource_group, nic))
+                vms_to_unblock.append(vms[nic.virtual_machine.id.lower()])
+            except Exception as e:
+                # probably a consistency issue/race condition/outdated cache in ARM, but if it's not, we should log it as error for the end user to notice
+                if nic.network_security_group:
+                    logger.error(f'Failed to reassociate blocked network interface {nic.name} for VM {nic.virtual_machine.id.lower()} with original network security group {nic.network_security_group}: {type(e)}: {e}')
+                else:
+                    logger.error(f'Failed to disassociate blocked network interface {nic.name} for VM {nic.virtual_machine.id.lower()} from blocking network security group: {type(e)}: {e}')
     if operations:
         wait_on_operations(operations)
         operations = []
         for vm in vms_to_unblock:
-            operations.append(restart_vm(client, resource_group, zone, vm.name))
+            try:
+                operations.append(restart_vm(client, resource_group, zone, vm.name))
+            except Exception as e:
+                logger.error(f'Failed to restart VM {vm.name}: {type(e)}: {e}')
         wait_on_operations(operations)
         logger.info(f'Unblocked and restarted {len(vms_to_unblock)} virtual machines.')
