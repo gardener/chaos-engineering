@@ -7,12 +7,14 @@ Source: https://github.com/gardener/chaos-engineering
 # source code
 
 Files:
+  .ci/*
   .github/*
   .gitignore
   chaosgarden/*
   hack/*
   CODEOWNERS
   requirements.txt
+  setup.py
   VERSION
 Copyright: 2023 SAP SE or an SAP affiliate company and Gardener contributors
 License: Apache-2.0

@@ -1,6 +1,9 @@
+/build
+/dist
 .activate
 .garden
 .kube
+*.egg-info
 *.bak
 *.log
 journal.json
