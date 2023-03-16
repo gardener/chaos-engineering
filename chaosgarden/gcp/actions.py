@@ -3,7 +3,7 @@ import random
 import time
 from datetime import datetime, timedelta
 from threading import Thread
-from typing import Dict, List
+from typing import Dict, Tuple
 
 from chaosgcp import client as gcp_client
 from chaoslib.types import Configuration, Secrets
@@ -145,7 +145,7 @@ def run_network_failure_simulation_in_background(
     return launch_thread(target = run_network_failure_simulation, kwargs = locals())
 
 def run_network_failure_simulation(
-        mode: str = 'total', # modes: 'total'|'ingress'|'egress'
+        mode: str = 'total', # modes: 'total'|'ingress'|'egress' with possible suffix '_with_instance_restart' to restart instead of suspend/resume the instance to terminate existing connections (see suspend/resume limitations https://cloud.google.com/compute/docs/instances/suspend-resume-instance#limitations)
         zone: str = None,
         filters: Dict[str, str] = None,
         duration: int = 0,
@@ -156,6 +156,7 @@ def run_network_failure_simulation(
 
     # input validation
     validate_duration(duration)
+    mode, requires_restart = parse_mode(mode)
     validate_mode(mode, ['total', 'ingress', 'egress'])
     project = project_id_from_secrets(secrets)
     validate_zone(zone)
@@ -165,7 +166,7 @@ def run_network_failure_simulation(
     client = gcp_client(service_name = 'compute', version = 'v1', secrets = secrets)
 
     # prepare to block network traffic
-    logger.info(f'Partitioning networks matching `{networks_filter}` with instances matching `{instances_filter}` in zone {zone} ({mode}).')
+    logger.info(f'Partitioning networks matching `{networks_filter}` with instances matching `{instances_filter}` in zone {zone} ({mode} with instance {"restart" if requires_restart else "suspend/resume"}).')
     for network in list_networks(client, project, networks_filter):
         create_blocking_firewalls(client, project, zone, instances_filter, network['selfLink'], mode)
 
@@ -173,7 +174,7 @@ def run_network_failure_simulation(
     terminator = Terminator(duration)
     while not terminator.is_terminated():
         try:
-            block_instances(client, project, zone, instances_filter)
+            block_instances(client, project, zone, instances_filter, requires_restart)
         except Exception as e:
             logger.error(f'Instance blocking failed: {type(e)}: {e}')
             # logger.error(traceback.format_exc())
@@ -184,12 +185,13 @@ def run_network_failure_simulation(
     rollback_network_failure_simulation(mode, zone, filters, configuration, secrets)
 
 def rollback_network_failure_simulation(
-        mode: str = 'total', # modes: 'total'|'ingress'|'egress'
+        mode: str = 'total', # modes: 'total'|'ingress'|'egress' with possible suffix '_with_instance_restart' to restart instead of suspend/resume the instance to terminate existing connections (see suspend/resume limitations https://cloud.google.com/compute/docs/instances/suspend-resume-instance#limitations)
         zone: str = None,
         filters: Dict[str, str] = None,
         configuration: Configuration = None,
         secrets: Secrets = None):
     # input validation
+    mode, _ = parse_mode(mode)
     validate_mode(mode, ['total', 'ingress', 'egress'])
     project = project_id_from_secrets(secrets)
     validate_zone(zone)
@@ -202,6 +204,13 @@ def rollback_network_failure_simulation(
     logger.info(f'Unpartitioning networks matching `{networks_filter}` with instances matching `{instances_filter}` in zone {zone} ({mode}).')
     unblock_instances(client, project, zone, instances_filter)
     delete_blocking_firewalls(client, project, zone, instances_filter)
+
+def parse_mode(mode: str) -> Tuple[str, str]:
+    requires_restart = False
+    if mode.endswith('_with_instance_restart'):
+        requires_restart = True
+        mode = mode.replace('_with_instance_restart', '')
+    return mode, requires_restart
 
 def create_blocking_firewalls(client, project, zone, instances_filter, network_link, mode):
     # create blocking firewalls
@@ -232,7 +241,7 @@ def delete_blocking_firewalls(client, project, zone, instances_filter):
         wait_on_global_operations(client, project, operations)
         logger.info(f'Deleted {len(operations)} blocking firewalls.')
 
-def block_instances(client, project, zone, instances_filter):
+def block_instances(client, project, zone, instances_filter, requires_restart):
     # list all not blocked instances and tag, suspend, and resume them
     firewall_network_tag = FIREWALL_NAME_LAMBDA(zone, instances_filter, 'tag')
     instances_to_block = []
@@ -240,19 +249,41 @@ def block_instances(client, project, zone, instances_filter):
         if firewall_network_tag not in instance['tags']['items']:
             instances_to_block.append(instance)
     if instances_to_block:
+        instances_to_interrupt = []
         operations = []
         for instance in instances_to_block:
-            operations.append(tag_instance(client, project, zone, instance['name'], instance['tags']['items'] + [firewall_network_tag], instance['tags']['fingerprint']))
+            try:
+                operations.append(tag_instance(client, project, zone, instance['name'], instance['tags']['items'] + [firewall_network_tag], instance['tags']['fingerprint']))
+                instances_to_interrupt.append(instance)
+            except Exception as e:
+                logger.error(f'Failed to tag instance {instance["name"]}: {type(e)}: {e}')
         wait_on_zonal_operations(client, project, zone, operations)
-        operations = []
-        for instance in instances_to_block:
-            operations.append(suspend_instance(client, project, zone, instance['name']))
-        wait_on_zonal_operations(client, project, zone, operations)
-        operations = []
-        for instance in instances_to_block:
-            operations.append(resume_instance(client, project, zone, instance['name']))
-        wait_on_zonal_operations(client, project, zone, operations)
-        logger.debug(f'Blocked, suspended, and resumed {len(instances_to_block)} instances.')
+        if requires_restart:
+            operations = []
+            for instance in instances_to_interrupt:
+                try:
+                    operations.append(restart_instance(client, project, zone, instance['name']))
+                except Exception as e:
+                    logger.error(f'Failed to restart instance {instance["name"]}: {type(e)}: {e}')
+            wait_on_zonal_operations(client, project, zone, operations)
+        else:
+            instances_to_resume = []
+            operations = []
+            for instance in instances_to_interrupt:
+                try:
+                    operations.append(suspend_instance(client, project, zone, instance['name']))
+                    instances_to_resume.append(instance)
+                except Exception as e:
+                    logger.error(f'Failed to suspend instance {instance["name"]}: {type(e)}: {e}')
+            wait_on_zonal_operations(client, project, zone, operations)
+            operations = []
+            for instance in instances_to_resume:
+                try:
+                    operations.append(resume_instance(client, project, zone, instance['name']))
+                except Exception as e:
+                    logger.error(f'Failed to resume instance {instance["name"]}: {type(e)}: {e}')
+            wait_on_zonal_operations(client, project, zone, operations)
+        logger.info(f'Blocked and interrupted {len(operations)} instances.')
 
 def unblock_instances(client, project, zone, instances_filter):
     # list all blocked instances and untag them
@@ -260,7 +291,10 @@ def unblock_instances(client, project, zone, instances_filter):
     operations = []
     for instance in list_instances(client, project, zone, instances_filter):
         if firewall_network_tag in instance['tags']['items']:
-            operations.append(tag_instance(client, project, zone, instance['name'], [tag for tag in instance['tags']['items'] if tag != firewall_network_tag], instance['tags']['fingerprint']))
+            try:
+                operations.append(tag_instance(client, project, zone, instance['name'], [tag for tag in instance['tags']['items'] if tag != firewall_network_tag], instance['tags']['fingerprint']))
+            except Exception as e:
+                logger.error(f'Failed to untag instance {instance["name"]}: {type(e)}: {e}')
     if operations:
         wait_on_zonal_operations(client, project, zone, operations)
         logger.info(f'Unblocked {len(operations)} instances.')

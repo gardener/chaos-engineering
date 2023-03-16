@@ -1,8 +1,8 @@
 import json
+import time
 from uuid import uuid4
 
 from box import Box
-from chaosgcp import wait_on_operation
 from chaoslib.types import Secrets
 from logzero import logger
 
@@ -119,3 +119,17 @@ def wait_on_global_operations(client, project, operations):
     logger.debug(f'Waiting on {len(operations)} global operations.')
     for operation in operations:
         wait_on_operation(client.globalOperations(), project = project, operation = operation)
+
+def wait_on_operation(operations, **kwargs):
+    # https://cloud.google.com/compute/docs/api/how-tos/api-requests-responses#handling_api_responses
+    logger.debug(f'Waiting on operation {kwargs["operation"]}.')
+    try:
+        while True:
+            operation_result = operations.get(**kwargs).execute()
+            if operation_result['status'].lower() == 'done':
+                logger.debug(f'Operation returned with result: {operation_result}')
+                return operation_result
+            else:
+                time.sleep(1)
+    except Exception as e:
+        logger.error(f'Operation failed: {type(e)}: {e}')

@@ -213,7 +213,7 @@ def assess_cloud_provider_filters_impact(
 #############################################
 
 def run_cloud_provider_compute_failure_simulation_in_background(
-        mode: str = 'terminate', # modes: 'terminate'|'restart'
+        mode: str = 'terminate',
         min_runtime: int = 0,
         max_runtime: int = 0,
         zone: Union[int, str] = None,
@@ -223,7 +223,7 @@ def run_cloud_provider_compute_failure_simulation_in_background(
     return launch_thread(target = run_cloud_provider_compute_failure_simulation, kwargs = locals())
 
 def run_cloud_provider_compute_failure_simulation(
-        mode: str = 'terminate', # modes: 'terminate'|'restart'
+        mode: str = 'terminate',
         min_runtime: int = 0,
         max_runtime: int = 0,
         zone: Union[int, str] = None,
@@ -250,7 +250,7 @@ def run_cloud_provider_compute_failure_simulation(
 #############################################
 
 def run_cloud_provider_network_failure_simulation_in_background(
-        mode: str = 'total', # modes: 'total'|'ingress'|'egress'
+        mode: str = 'total',
         zone: Union[int, str] = None,
         duration: int = 0,
         configuration: Dict = None,
@@ -258,7 +258,7 @@ def run_cloud_provider_network_failure_simulation_in_background(
     return launch_thread(target = run_cloud_provider_network_failure_simulation, kwargs = locals())
 
 def run_cloud_provider_network_failure_simulation(
-        mode: str = 'total', # modes: 'total'|'ingress'|'egress'
+        mode: str = 'total',
         zone: Union[int, str] = None,
         duration: int = 0,
         configuration: Dict = None,
@@ -276,7 +276,7 @@ def run_cloud_provider_network_failure_simulation(
         secrets = secrets)
 
 def rollback_cloud_provider_network_failure_simulation(
-        mode: str = 'total', # modes: 'total'|'ingress'|'egress'
+        mode: str = 'total',
         zone: Union[int, str] = None,
         configuration: Dict = None,
         secrets: Dict = None):
