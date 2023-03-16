@@ -1,0 +1,14 @@
+chaos-engineering:
+  jobs:
+    release:
+      steps:
+        release_to_pypi:
+          trait_depends: ['release']
+      traits:
+        version:
+          preprocess: 'finalize'
+          inject_effective_version: True
+        component_descriptor: ~
+        release:
+          nextversion: 'bump_minor'
+          release_on_github: True

@@ -4,9 +4,9 @@
 
 ## Introduction
 
-This package provides [Gardener](https://github.com/gardener/gardener)-independent [`chaostoolkit`](https://chaostoolkit.org) modules to simulate *compute* and *network* outages for various cloud providers as well as to *disrupt pods* in Kubernetes clusters.
+This package provides [Gardener](https://github.com/gardener/gardener)-independent [`chaostoolkit`](https://chaostoolkit.org) modules to simulate *compute* and *network* outages for various cloud providers as well as *pod disruptions* in any Kubernetes cluster.
 
-<img src="https://github.com/gardener/gardener/blob/master/logo/gardener.svg" width="16"/> [Gardener](https://github.com/gardener/gardener) users benefit from an [*additional* module](#gardener) that leverages the generic modules, but hides the configuration differences from the end user (no need to specify cloud provider or cluster credentials, filters and everything else is computed automatically).
+<img src="https://raw.githubusercontent.com/gardener/gardener/master/logo/gardener.svg" width="16"/> [Gardener](https://github.com/gardener/gardener) users benefit from an [*additional* module](#gardener) that leverages the generic modules, but exposes their functionality in the most simple, homogeneous, and secure way (no need to specify cloud provider credentials, cluster credentials, or filters explicitly; retrieves credentials and stores them in memory only):
 
 ### Cloud Providers
 
@@ -32,7 +32,7 @@ The module supports powerful filter criteria like node labels, pod labels, pod m
 
 ### Gardener
 
-Whether you want to target cloud provider resources or pods, if you have a Gardener-managed cluster, this package is for you as it supports all of the above, but in the most homogeneous way (no need to specify cloud provider or cluster credentials, filters and everything else is computed automatically):
+Whether you want to target cloud provider resources or pods, if you have a Gardener-managed cluster, this package is for you as it supports all of the above, but in the most simple, homogeneous, and secure way (no need to specify cloud provider credentials, cluster credentials, or filters explicitly; retrieves credentials and stores them in memory only):
 
 - **Module: [`garden`](/docs/garden/readme.md)**
 
@@ -44,29 +44,30 @@ Finally, there is a tiny additional module that is primarily useful for human in
 
 ## Installation, Usage, and Configuration
 
-This package was developed and tested with Python 3.9+. It's not yet available on [PyPI](https://pypi.org), but this is planned eventually. For now, you will have to clone this repository and add it to your `PYTHONPATH`. You may want to [create a virtual environment](https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/#creating-a-virtual-environment) before installing the requirements with `pip`.
+This package was developed and tested with Python 3.9+ and is being published to [PyPI](https://pypi.org/project/chaosgarden). You may want to [create a virtual environment](https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/#creating-a-virtual-environment) before installing it with `pip`.
 
 ``` sh
-git clone https://github.com/gardener/chaos-engineering gardener-chaos-engineering
-cd gardener-chaos-engineering
-python -m pip install -r requirements.txt
-export PYTHONPATH="$PYTHONPATH:$(pwd)"
+pip install chaosgarden
 ```
 
-If you want to use the VMware vSphere module, please note the remarks in [`requirements.txt`](/requirements.txt) for `vSphere`.
+If you want to use the [VMware vSphere module](/docs/vsphere/readme.md), please note the remarks in [`requirements.txt`](/requirements.txt) for `vSphere`. Those are not contained in the published [PyPI](https://pypi.org/project/chaosgarden) package.
 
 For usage and configuration of the individual modules, please see the detailed [docs](/docs) on the modules listed above.
 
-This package is based on [`chaostoolkit`](https://chaostoolkit.org) and their incubation extensions for the different infrastructures. That said, it can be used also directly in Python, but if you intend to use it in combination with the [`chaostoolkit`](https://chaostoolkit.org) [CLI](https://chaostoolkit.org/reference/usage/cli) and [experiments](https://chaostoolkit.org/reference/api/experiment), you will have to install it and make yourself familiar with it. Here some pointers/further reading:
+This package is based on [`chaostoolkit`](https://chaostoolkit.org) and to some degree also on some of its incubation extensions (requirements included within the `chaosgarden` package). It can also be used directly from Python scripts and supports this mode with additional convenience that helps launch actions and probes in background, so that you can compose also complex scenarios with ease.
+
+If you intend to use it in combination with the [`chaostoolkit`](https://chaostoolkit.org) [CLI](https://chaostoolkit.org/reference/usage/cli) and [experiment files](https://chaostoolkit.org/reference/api/experiment), you will have to [install the CLI](https://chaostoolkit.org/reference/usage/install/#install-the-cli) first and make yourself familiar with it.
+
+Here some links for further reading:
 
 - **Chaos Toolkit Core**: [Home Page](https://chaostoolkit.org), [Installation](https://chaostoolkit.org/reference/usage/install), [Concepts](https://chaostoolkit.org/reference/concepts), [GitHub](https://github.com/chaostoolkit/chaostoolkit)
 - **Chaos Toolkit Extensions**:
-  - **AWS**: [Docs](https://chaostoolkit.org/drivers/aws), [GitHub](https://github.com/chaostoolkit-incubator/chaostoolkit-aws/tree/master/chaosaws) (many resources)
-  - **Azure**: [Docs](https://chaostoolkit.org/drivers/azure), [GitHub](https://github.com/chaostoolkit-incubator/chaostoolkit-azure/tree/master/chaosazure) (some resources)
-  - **GCP**: [Docs](https://chaostoolkit.org/drivers/gcp), [GitHub](https://github.com/chaostoolkit-incubator/chaostoolkit-google-cloud-platform/tree/master/chaosgcp) (only GKE node pools)
-  - **OpenStack**: [GitHub](https://github.com/chaostoolkit-incubator/chaostoolkit-openstack/tree/master/chaosopenstack) (only compute)
+  - **AWS**: [Docs](https://chaostoolkit.org/drivers/aws), [GitHub](https://github.com/chaostoolkit-incubator/chaostoolkit-aws/tree/master/chaosaws) (many resources are supported)
+  - **Azure**: [Docs](https://chaostoolkit.org/drivers/azure), [GitHub](https://github.com/chaostoolkit-incubator/chaostoolkit-azure/tree/master/chaosazure) (some resources are supported)
+  - **GCP**: [Docs](https://chaostoolkit.org/drivers/gcp), [GitHub](https://github.com/chaostoolkit-incubator/chaostoolkit-google-cloud-platform/tree/master/chaosgcp) (only GKE node pools are supported)
+  - **OpenStack**: [GitHub](https://github.com/chaostoolkit-incubator/chaostoolkit-openstack/tree/master/chaosopenstack) (only compute resources are supported)
   - **VMware**: [GitHub](https://github.com/chaostoolkit-incubator/chaostoolkit-vmware/tree/master/chaosvmware) (nothing/empty at the time of this writing)
-  - **Kubernetes**: [Docs](https://chaostoolkit.org/drivers/kubernetes), [GitHub](https://github.com/chaostoolkit/chaostoolkit-kubernetes/tree/master/chaosk8s) (many resources)
+  - **Kubernetes**: [Docs](https://chaostoolkit.org/drivers/kubernetes), [GitHub](https://github.com/chaostoolkit/chaostoolkit-kubernetes/tree/master/chaosk8s) (many resources are supported)
 
 In some cases, we extended the original upstream open source incubator extensions significantly and we may eventually contribute those changes back upstream, if the community is interested.
 
