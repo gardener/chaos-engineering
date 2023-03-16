@@ -1,0 +1,22 @@
+azure-mgmt-network==22.2.0
+chaostoolkit==1.15.0
+chaostoolkit-lib==1.33.1
+chaostoolkit-aws==0.21.2
+chaostoolkit-azure==0.11.0
+chaostoolkit-google-cloud-platform==0.8.0
+chaostoolkit-kubernetes==0.26.3
+kubernetes==24.2.0
+Mako==1.2.4
+openstacksdk==1.0.1
+python-box==7.0.0
+PyYAML==6.0
+urllib3==1.26.14
+
+# The following packages are needed for VMware vSphere support:
+# - nsx-policy-python-sdk (developed and tested with 4.0.1.0.0)
+# - pyVmomi (developed and tested with 7.0.3)
+# - vapi-client-bindings (developed and tested with 4.0.0)
+# However, they are part of https://github.com/vmware/vsphere-automation-sdk-python and shall be
+# installed following https://github.com/vmware/vsphere-automation-sdk-python#quick-start-guide:
+# 1. run `pip install --upgrade git+https://github.com/vmware/vsphere-automation-sdk-python.git`
+# 2. run `pip install -r requirements.txt` afterwards again to restore the core requirements above

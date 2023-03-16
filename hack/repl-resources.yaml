@@ -1,0 +1,28 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: repl
+  namespace: default
+  labels:
+    chaos.gardener.cloud/role: repl
+spec:
+  restartPolicy: Always
+  containers:
+  - name: repl
+    image: python:3.9.15-bullseye
+    imagePullPolicy: IfNotPresent
+    command:
+    - 'bash'
+    - '-c'
+    - 'pip install kubernetes==24.2.0 Flask==2.2.2; sleep infinity'
+  tolerations:
+  - key: "node.kubernetes.io/unreachable"
+    operator: "Exists"
+    effect: "NoExecute"
+    tolerationSeconds: 0
+  - key: "node.kubernetes.io/not-ready"
+    operator: "Exists"
+    effect: "NoExecute"
+    tolerationSeconds: 0
+  terminationGracePeriodSeconds: 0

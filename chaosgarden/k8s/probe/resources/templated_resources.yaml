@@ -1,0 +1,338 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: heartbeats.chaos.gardener.cloud
+spec:
+  group: chaos.gardener.cloud
+  names:
+    kind: Heartbeat
+    singular: heartbeat
+    plural: heartbeats
+    shortNames:
+    - hb
+  scope: Cluster
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          description: Heart beats created during a chaos test/failure simulation to probe certain functionality.
+          type: object
+          properties:
+            ready:
+              description: Probe readiness (for non API server probes that have their own readiness)
+              type: boolean
+            payload:
+              description: Probe payload (any additional payload data specific to a probe)
+              type: string
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: acknowledgedheartbeats.chaos.gardener.cloud
+spec:
+  group: chaos.gardener.cloud
+  names:
+    kind: AcknowledgedHeartbeat
+    singular: acknowledgedheartbeat
+    plural: acknowledgedheartbeats
+    shortNames:
+    - ahb
+  scope: Cluster
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          description: Heart beats created during a chaos test/failure simulation to probe certain functionality.
+          type: object
+          properties:
+            ready:
+              description: Probe readiness (for non API server probes that have their own readiness)
+              type: boolean
+            payload:
+              description: Probe payload (any additional payload data specific to a probe)
+              type: string
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: chaos-garden-probe
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: probe
+  namespace: chaos-garden-probe
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: chaos-garden-probe
+rules:
+- apiGroups:
+  - ''
+  resources:
+  - 'configmaps'
+  - 'nodes'
+  verbs:
+  - 'get'
+  - 'list'
+  - 'watch'
+- apiGroups:
+  - ''
+  resources:
+  - 'pods'
+  verbs:
+  - '*'
+- apiGroups:
+  - 'dns.gardener.cloud'
+  resources:
+  - 'dnsentries'
+  verbs:
+  - '*'
+- apiGroups:
+  - 'chaos.gardener.cloud'
+  resources:
+  - 'heartbeats'
+  - 'acknowledgedheartbeats'
+  verbs:
+  - '*'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: chaos-garden-probe
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: chaos-garden-probe
+subjects:
+- kind: ServiceAccount
+  name: probe
+  namespace: chaos-garden-probe
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: probe-pod-source
+  namespace: chaos-garden-probe
+data:
+  probe-pod.py: |
+${probe_pod_source}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: suicidal-pod-source
+  namespace: chaos-garden-probe
+data:
+  suicidal-pod.py: |
+${suicidal_pod_source}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: probe-webhook-tls
+  namespace: chaos-garden-probe
+type: Opaque
+data:
+  webhook.crt: ${crt}
+  webhook.key: ${key}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: probe
+  namespace: chaos-garden-probe
+spec:
+  replicas: ${replicas}
+  selector:
+    matchLabels:
+      chaos.gardener.cloud/role: probe
+  template:
+    metadata:
+      labels:
+        chaos.gardener.cloud/role: probe
+    spec:
+      containers:
+      - name: probe
+        image: python:3.9.15-slim-bullseye
+        imagePullPolicy: IfNotPresent
+        command:
+        - 'bash'
+        - '-c'
+        - 'pip install kubernetes==24.2.0 Flask==2.2.2; python -u /app/probe-pod.py'
+        readinessProbe:
+          httpGet:
+            scheme: 'HTTPS'
+            port: 8080
+            path: '/readyz'
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          failureThreshold: 1 # after this many times, container will become NotReady
+        ports:
+        - containerPort: 8080
+          name: flask-port
+        volumeMounts:
+        - name: probe
+          mountPath: '/app'
+          readOnly: true
+        - name: tls
+          mountPath: '/tls'
+          readOnly: true
+        - name: pod
+          mountPath: /pod
+          readOnly: true
+      topologySpreadConstraints:
+        - topologyKey: topology.kubernetes.io/zone
+          maxSkew: 1
+          minDomains: 10
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              chaos.gardener.cloud/role: probe
+      tolerations:
+      - key: "node.kubernetes.io/unreachable"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 0
+      - key: "node.kubernetes.io/not-ready"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 0
+      serviceAccountName: probe
+      terminationGracePeriodSeconds: 60
+      volumes:
+        - name: probe
+          configMap:
+            name: probe-pod-source
+            defaultMode: 0755
+            items:
+              - key: 'probe-pod.py'
+                path: 'probe-pod.py'
+        - name: tls
+          secret:
+            secretName: probe-webhook-tls
+        - name: pod
+          downwardAPI:
+            items:
+              - path: name
+                fieldRef:
+                  fieldPath: metadata.name
+              - path: namespace
+                fieldRef:
+                  fieldPath: metadata.namespace
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: probe-suicidal-pods
+  namespace: chaos-garden-probe
+spec:
+  replicas: ${replicas}
+  selector:
+    matchLabels:
+      chaos.gardener.cloud/role: probe-suicidal-pods
+  template:
+    metadata:
+      labels:
+        chaos.gardener.cloud/role: probe-suicidal-pods
+    spec:
+      containers:
+      - name: probe
+        image: python:3.9.15-slim-bullseye
+        imagePullPolicy: IfNotPresent
+        command:
+        - 'bash'
+        - '-c'
+        - 'pip install kubernetes==24.2.0; python -u /app/suicidal-pod.py'
+        volumeMounts:
+        - name: probe
+          mountPath: '/app'
+          readOnly: true
+        - name: pod
+          mountPath: /pod
+          readOnly: true
+      topologySpreadConstraints:
+        - topologyKey: topology.kubernetes.io/zone
+          maxSkew: 1
+          minDomains: 10
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              chaos.gardener.cloud/role: probe-suicidal-pods
+      tolerations:
+      - key: "node.kubernetes.io/unreachable"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 0
+      - key: "node.kubernetes.io/not-ready"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 0
+      serviceAccountName: probe
+      terminationGracePeriodSeconds: 0
+      volumes:
+        - name: probe
+          configMap:
+            name: suicidal-pod-source
+            defaultMode: 0755
+            items:
+              - key: 'suicidal-pod.py'
+                path: 'suicidal-pod.py'
+        - name: pod
+          downwardAPI:
+            items:
+              - path: name
+                fieldRef:
+                  fieldPath: metadata.name
+              - path: namespace
+                fieldRef:
+                  fieldPath: metadata.namespace
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: probe
+  namespace: chaos-garden-probe
+  annotations:
+    service.kubernetes.io/topology-aware-hints: auto
+spec:
+  selector:
+    chaos.gardener.cloud/role: probe
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: flask-port
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: chaos-garden-probe-webhook
+webhooks:
+- name: probe.chaos-garden-probe.svc
+  admissionReviewVersions:
+  - 'v1'
+  failurePolicy: Ignore
+  sideEffects: None
+  timeoutSeconds: 15
+  rules:
+  - apiGroups:
+    - 'chaos.gardener.cloud'
+    apiVersions:
+    - '*'
+    resources:
+    - 'acknowledgedheartbeats'
+    operations:
+    - CREATE
+  clientConfig:
+    service:
+      name: probe
+      namespace: chaos-garden-probe
+      port: 80
+      path: /webhook
+    caBundle: ${crt}

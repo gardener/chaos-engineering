@@ -1,0 +1,22 @@
+{
+    "title": "Title goes here...",
+    "description": "Description goes here...",
+    "method": [
+        {
+            "type": "action",
+            "name": "assess-filters-impact",
+            "provider": {
+                "type": "python",
+                "module": "chaosgarden.garden.actions",
+                "func": "assess_cloud_provider_filters_impact",
+                "arguments": {
+                    "zone": 0                            # replace with your zone index (alphabetically ordered, starting at 0)
+                }
+            }
+        }
+    ],
+    "configuration": {
+        "garden_project": "...",                         # replace with your project name; field name fixed
+        "garden_shoot":   "..."                          # replace with your shoot name;   field name fixed
+    }
+}

@@ -1,0 +1,26 @@
+{
+    "title": "Title goes here...",
+    "description": "Description goes here...",
+    "method": [
+        {
+            "type": "action",
+            "name": "run-compute-failure-simulation",
+            "provider": {
+                "type": "python",
+                "module": "chaosgarden.garden.actions",
+                "func": "run_cloud_provider_compute_failure_simulation",
+                "arguments": {
+                    "mode": "terminate",                 # keep `terminate` (default) or replace with `restart`
+                    "min_runtime": 0,                    # keep `0` (immediate) or replace with number of seconds node must run at least
+                    "max_runtime": 0,                    # keep `0` (immediate) or replace with number of seconds node may run at most
+                    "zone": 0                            # replace with your zone index (alphabetically ordered, starting at 0)
+                    "duration": 60                       # replace with time in seconds this action shall run
+                }
+            }
+        }
+    ],
+    "configuration": {
+        "garden_project": "...",                         # replace with your project name; field name fixed
+        "garden_shoot":   "..."                          # replace with your shoot name;   field name fixed
+    }
+}

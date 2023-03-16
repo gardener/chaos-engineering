@@ -1,0 +1,61 @@
+{
+    "title": "Title goes here...",
+    "description": "Description goes here...",
+    "method": [
+        {
+            "type": "action",
+            "name": "run_network_failure_simulation",
+            "provider": {
+                "type": "python",
+                "module": "chaosgarden.vsphere.actions",
+                "func": "run_network_failure_simulation",
+                "secrets": ["cloud_provider"],                        # must refer to secrets authenticating against cloud provider; field name free
+                "arguments": {
+                    "mode": "total",                                  # keep `total` (default) or replace with `ingress` or `egress`
+                    "zone": "${vsphere_zone}",                        # can be inline, but we recommend variable substitution; field/var name free
+                    "filters": "${vsphere_filters}",                  # can be inline, but we recommend variable substitution; field/var name free
+                    "duration": 60                                    # replace with time in seconds this action shall run
+                }
+            }
+        }
+    ],
+    "rollbacks": [
+        {
+            "type": "action",
+            "name": "rollback-network-failure-simulation",
+            "provider": {
+                "type": "python",
+                "module": "chaosgarden.vsphere.actions",
+                "func": "rollback_network_failure_simulation",
+                "secrets": ["cloud_provider"],                        # must refer to secrets authenticating against cloud provider; field name free
+                "arguments": {
+                    "mode": "total",                                  # keep `total` (default) or replace with `ingress` or `egress`
+                    "zone": "${vsphere_zone}",                        # can be inline, but we recommend variable substitution; field/var name free
+                    "filters": "${vsphere_filters}"                   # can be inline, but we recommend variable substitution; field/var name free
+                }
+            }
+        }
+    ],
+    "configuration": {
+        "vsphere_vcenter_server": "...",                              # replace with your vSphere server hostname or IP; field name fixed
+        "vsphere_vcenter_insecure": false,                            # verify or skip TLS server certficate;            field name fixed
+        "vsphere_nsxt_server": "...",                                 # replace with your NSXT-T server hostname or IP;  field name fixed
+        "vsphere_nsxt_insecure": false,                               # verify or skip TLS server certficate;            field name fixed
+        "vsphere_zone": "world-1a",                                   # replace with your zone;                          field name free
+        "vsphere_filters": {                                          # replace with your filters;                       field name free
+            "virtual_machines": {
+                "custom_attributes": {...},                           # replace with your custom attributes;             field name fixed
+                "resource_pools": [...],                              # replace with your resource pool(s) and/or...;    field name fixed
+                "clusters": [...],                                    # ...replace with your cluster(s) (at least one);  field name fixed
+            }
+        }
+    },
+    "secrets": {
+        "cloud_provider": {
+            "vsphere_username": "...",                                # replace with your credentials; field name fixed
+            "vsphere_password": "...",                                #    "
+            "nsxt_username": "...",                                   #    "
+            "nsxt_password": "...",                                   #    "
+        }
+    }
+}

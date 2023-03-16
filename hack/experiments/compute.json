@@ -1,0 +1,103 @@
+{
+    "title": "run-compute-failure-simulation",
+    "description": "run-compute-failure-simulation",
+    "method": [
+        {
+            "type": "action",
+            "name": "assess-filters-impact",
+            "provider": {
+                "type": "python",
+                "module": "chaosgarden.garden.actions",
+                "func": "assess_cloud_provider_filters_impact",
+                "arguments": {
+                    "zone": "${zone}"
+                }
+            }
+        },
+        {
+            "type": "action",
+            "name": "wait-for-confirmation",
+            "provider": {
+                "type": "python",
+                "module": "chaosgarden.human.actions",
+                "func": "wait_for"
+            }
+        },
+        {
+            "type": "probe",
+            "name": "run-shoot-cluster-health-probe",
+            "tolerance": true,
+            "provider": {
+                "type": "python",
+                "module": "chaosgarden.garden.probes",
+                "func": "run_shoot_cluster_health_probe",
+                "arguments": {
+                    "duration": 480,
+                    "thresholds": "${thresholds}"
+                }
+            },
+            "background": true
+        },
+        {
+            "pauses": {
+                "before": 60
+            },
+            "type": "action",
+            "name": "run-compute-failure-simulation",
+            "provider": {
+                "type": "python",
+                "module": "chaosgarden.garden.actions",
+                "func": "run_cloud_provider_compute_failure_simulation",
+                "arguments": {
+                    "mode": "terminate",
+                    "zone": "${zone}",
+                    "duration": 60
+                }
+            }
+        }
+    ],
+    "rollbacks": [
+        {
+            "type": "action",
+            "name": "rollback-shoot-cluster-health-probe",
+            "provider": {
+                "type": "python",
+                "module": "chaosgarden.garden.probes",
+                "func": "rollback_shoot_cluster_health_probe"
+            }
+        }
+    ],
+    "configuration": {
+        "garden_project": {
+            "type": "env",
+            "key": "GARDEN_PROJECT"
+        },
+        "garden_shoot": {
+            "type": "env",
+            "key": "GARDEN_SHOOT"
+        },
+        "zone": 0,
+        "thresholds": {
+            "regional": {
+                "api": 15,
+                "web-hook": 15
+            },
+            "0": {
+                "api-external": 420,
+                "api-internal": 420,
+                "dns-external": 420,
+                "dns-internal": 420,
+                "dns-management": 420,
+                "pod-lifecycle": 420
+            },
+            "!0": {
+                "api-external": 15,
+                "api-internal": 15,
+                "dns-external": 15,
+                "dns-internal": 15,
+                "dns-management": 15,
+                "pod-lifecycle": 15
+            }
+        }
+    }
+}

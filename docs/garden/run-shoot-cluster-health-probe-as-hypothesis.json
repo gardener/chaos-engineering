@@ -1,0 +1,93 @@
+{
+    "title": "Title goes here...",
+    "description": "Description goes here...",
+    "steady-state-hypothesis": {
+        "title": "steady-state-hypothesis",
+        "probes": [
+            {
+                "type": "probe",
+                "name": "run-shoot-cluster-health-probe",
+                "tolerance": true,
+                "provider": {
+                    "type": "python",
+                    "module": "chaosgarden.garden.probes",
+                    "func": "run_shoot_cluster_health_probe",
+                    "arguments": {
+                        "duration": 120,                 # replace with time in seconds this probe shall run
+                        "thresholds": "${thresholds}",   # can be inline, but we recommend variable substitution; field/var name free
+                        "silent": true                   # specify whether a `bool` shall be returned (silent) or an `AssertionError` shall be raised (not silent)
+                    }
+                },
+                "pauses": {
+                    "before": 10
+                }
+            }
+        ]
+    },
+    "method": [],
+    "rollbacks": [
+        {
+            "type": "action",
+            "name": "rollback-shoot-cluster-health-probe",
+            "provider": {
+                "type": "python",
+                "module": "chaosgarden.garden.probes",
+                "func": "rollback_shoot_cluster_health_probe"
+            }
+        }
+    ],
+    "configuration": {
+        "garden_project": "...",                         # replace with your project name; field name fixed
+        "garden_shoot":   "...",                         # replace with your shoot name;   field name fixed
+        "thresholds": {                                  # replace with your thresholds that will fail the probe; field name free
+            "api": {
+                "initial-gap": 20,
+                "gap": 10,
+                "incidents": 0,
+                "downtime":  0
+            },
+            "api-external": {
+                "initial-gap": 20,
+                "gap": 10,
+                "incidents": 0,
+                "downtime":  0
+            },
+            "api-internal": {
+                "initial-gap": 20,
+                "gap": 10,
+                "incidents": 0,
+                "downtime":  0
+            },
+            "dns-external": {
+                "initial-gap": 20,
+                "gap": 10,
+                "incidents": 0,
+                "downtime":  0
+            },
+            "dns-internal": {
+                "initial-gap": 20,
+                "gap": 10,
+                "incidents": 0,
+                "downtime":  0
+            },
+            "dns-management": {
+                "initial-gap": 60,
+                "gap": 10,
+                "incidents": 0,
+                "downtime":  0
+            },
+            "pod-lifecycle": {
+                "initial-gap": 30,
+                "gap": 30,
+                "incidents": 0,
+                "downtime":  0
+            },
+            "web-hook": {
+                "initial-gap": 45,
+                "gap": 10,
+                "incidents": 0,
+                "downtime":  0
+            }
+        }
+    }
+}

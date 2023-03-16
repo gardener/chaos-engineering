@@ -1,0 +1,29 @@
+{
+    "title": "assess-filters-impact",
+    "description": "assess-filters-impact",
+    "method": [
+        {
+            "type": "action",
+            "name": "assess-filters-impact",
+            "provider": {
+                "type": "python",
+                "module": "chaosgarden.garden.actions",
+                "func": "assess_cloud_provider_filters_impact",
+                "arguments": {
+                    "zone": "${zone}"
+                }
+            }
+        }
+    ],
+    "configuration": {
+        "garden_project": {
+            "type": "env",
+            "key": "GARDEN_PROJECT"
+        },
+        "garden_shoot": {
+            "type": "env",
+            "key": "GARDEN_SHOOT"
+        },
+        "zone": 0
+    }
+}
