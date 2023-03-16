@@ -11,6 +11,8 @@ This module provides [`chaostoolkit`](https://chaostoolkit.org) actions to simul
 
 :warning: If you block network traffic one way, e.g. *ingress* (resp. *egress*), the other way, then *egress* (resp. *ingress*), is fully opened, so use with care.
 
+:warning: To terminate all active connections, the instance will be suspended/resumed. If that's not possible for you (see [limitations](https://cloud.google.com/compute/docs/instances/suspend-resume-instance#limitations)), you can also request to restart the instance instead (add the suffix `_with_instance_restart` to the `mode`).
+
 You can run the above in parallel, even of the same type, as long as the targeted zones differ. This way you can also test whether you recover after a multi-zonal outage.
 
 ### How?

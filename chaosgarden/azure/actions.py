@@ -268,7 +268,7 @@ def block_virtual_machines(
             except Exception as e:
                 logger.error(f'Failed to restart VM {vm.name}: {type(e)}: {e}')
         wait_on_operations(operations)
-        logger.info(f'Blocked and restarted {len(vms_to_block)} virtual machines.')
+        logger.info(f'Blocked and restarted {len(operations)} virtual machines.')
 
 def unblock_virtual_machines(
         client: AzureClient,
@@ -308,4 +308,4 @@ def unblock_virtual_machines(
             except Exception as e:
                 logger.error(f'Failed to restart VM {vm.name}: {type(e)}: {e}')
         wait_on_operations(operations)
-        logger.info(f'Unblocked and restarted {len(vms_to_unblock)} virtual machines.')
+        logger.info(f'Unblocked and restarted {len(operations)} virtual machines.')
