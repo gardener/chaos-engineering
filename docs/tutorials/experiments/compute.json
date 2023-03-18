@@ -1,0 +1,32 @@
+{
+    "title": "run-compute-failure-simulation",
+    "description": "run-compute-failure-simulation",
+    "method": [
+        {
+            "type": "action",
+            "name": "run-compute-failure-simulation",
+            "provider": {
+                "type": "python",
+                "module": "chaosgarden.garden.actions",
+                "func": "run_cloud_provider_compute_failure_simulation",
+                "arguments": {
+                    "mode": "terminate",
+                    "min_runtime": 0,
+                    "max_runtime": 0,
+                    "zone": 0,
+                    "duration": 60
+                }
+            }
+        }
+    ],
+    "configuration": {
+        "garden_project": {
+            "type": "env",
+            "key": "GARDEN_PROJECT"
+        },
+        "garden_shoot": {
+            "type": "env",
+            "key": "GARDEN_SHOOT"
+        }
+    }
+}

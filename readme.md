@@ -4,7 +4,7 @@
 
 ## Introduction
 
-This package provides [Gardener](https://github.com/gardener/gardener)-independent [`chaostoolkit`](https://chaostoolkit.org) modules to simulate *compute* and *network* outages for various cloud providers as well as *pod disruptions* in any Kubernetes cluster.
+This package provides [Gardener](https://github.com/gardener/gardener)-independent [`chaostoolkit`](https://chaostoolkit.org) modules to simulate *compute* and *network* outages for various cloud providers as well as *pod disruptions* for any Kubernetes cluster.
 
 <img src="https://raw.githubusercontent.com/gardener/gardener/master/logo/gardener.svg" width="16"/> [Gardener](https://github.com/gardener/gardener) users benefit from an [*additional* module](#gardener) that leverages the generic modules, but exposes their functionality in the most simple, homogeneous, and secure way (no need to specify cloud provider credentials, cluster credentials, or filters explicitly; retrieves credentials and stores them in memory only):
 
@@ -42,6 +42,12 @@ Finally, there is a tiny additional module that is primarily useful for human in
 
 - **Module: [`human`](/docs/human/readme.md)**
 
+## Getting Started
+
+If you are new to [`chaostoolkit`](https://chaostoolkit.org) and its terminology and tools, please check out our [getting started tutorial](/docs/tutorials/getting_started.md). It will show you how to use this package in combination with the [`chaostoolkit`](https://chaostoolkit.org) [CLI](https://chaostoolkit.org/reference/usage/cli) and [experiment files](https://chaostoolkit.org/reference/api/experiment).
+
+If you are an experienced [`chaostoolkit`](https://chaostoolkit.org) user, please read on to pick up only the essentials.
+
 ## Installation, Usage, and Configuration
 
 This package was developed and tested with Python 3.9+ and is being published to [PyPI](https://pypi.org/project/chaosgarden). You may want to [create a virtual environment](https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/#creating-a-virtual-environment) before installing it with `pip`.
@@ -73,6 +79,6 @@ In some cases, we extended the original upstream open source incubator extension
 
 ## Implementing High Availability and Tolerating Zone Outages
 
-Implementing high availability that can even tolerate a zone outage unscathed is no trivial task. You can find more information on how to achieve this goal [here](https://github.com/gardener/gardener/blob/master/docs/usage/shoot_high_availability_best_practices.md). While many recommendations are general enough, the examples are specific in how to achieve this in a Gardener-managed cluster and where/how to tweak the different control plane components. If you do not use Gardener, it may be still a worthwhile read.
+Developing highly available workload that can tolerate a zone outage unscathed is no trivial task. You can find more information on how to achieve this goal [here](https://github.com/gardener/gardener/blob/master/docs/usage/shoot_high_availability_best_practices.md). While many recommendations are general enough, the examples are specific in how to achieve this in a Gardener-managed cluster and where/how to tweak the different control plane components. If you do not use Gardener, it may be still a worthwhile read.
 
 Thank you for your interest in Gardener chaos engineering and making your workload more resilient.

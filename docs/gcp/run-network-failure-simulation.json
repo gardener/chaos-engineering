@@ -16,7 +16,7 @@
                                                          # suspend/resume the instance (required to terminate all active connections),
                                                          # see limitations https://cloud.google.com/compute/docs/instances/suspend-resume-instance#limitations
                     "zone": "${gcp_zone}",               # can be inline, but we recommend variable substitution; field/var name free
-                    "filters": "${gcp_filters}"          # can be inline, but we recommend variable substitution; field/var name free
+                    "filters": "${gcp_filters}",         # can be inline, but we recommend variable substitution; field/var name free
                     "duration": 60                       # replace with time in seconds this action shall run
                 }
             }

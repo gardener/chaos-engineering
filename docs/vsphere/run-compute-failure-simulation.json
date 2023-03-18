@@ -15,7 +15,7 @@
                     "min_runtime": 0,                                 # keep `0` (immediate) or replace with number of seconds instance must run at least
                     "max_runtime": 0,                                 # keep `0` (immediate) or replace with number of seconds instance may run at most
                     "zone": "${vsphere_zone}",                        # can be inline, but we recommend variable substitution; field/var name free
-                    "filters": "${vsphere_filters}"                   # can be inline, but we recommend variable substitution; field/var name free
+                    "filters": "${vsphere_filters}",                  # can be inline, but we recommend variable substitution; field/var name free
                     "duration": 60                                    # replace with time in seconds this action shall run
                 }
             }
@@ -31,7 +31,7 @@
             "virtual_machines": {
                 "custom_attributes": {...},                           # replace with your custom attributes;             field name fixed
                 "resource_pools": [...],                              # replace with your resource pool(s) and/or...;    field name fixed
-                "clusters": [...],                                    # ...replace with your cluster(s) (at least one);  field name fixed
+                "clusters": [...]                                     # ...replace with your cluster(s) (at least one);  field name fixed
             }
         }
     },
@@ -40,7 +40,7 @@
             "vsphere_username": "...",                                # replace with your credentials; field name fixed
             "vsphere_password": "...",                                #    "
             "nsxt_username": "...",                                   #    "
-            "nsxt_password": "...",                                   #    "
+            "nsxt_password": "..."                                    #    "
         }
     }
 }

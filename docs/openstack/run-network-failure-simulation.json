@@ -13,7 +13,7 @@
                 "arguments": {
                     "mode": "total",                                  # keep `total` (default) or replace with `ingress` or `egress`
                     "zone": "${openstack_zone}",                      # can be inline, but we recommend variable substitution; field/var name free
-                    "filters": "${openstack_filters}"                 # can be inline, but we recommend variable substitution; field/var name free
+                    "filters": "${openstack_filters}",                # can be inline, but we recommend variable substitution; field/var name free
                     "duration": 60                                    # replace with time in seconds this action shall run
                 }
             }

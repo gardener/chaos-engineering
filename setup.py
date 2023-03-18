@@ -40,7 +40,7 @@ setuptools.setup(
     author                        = 'SAP SE',
     license                       = 'License :: OSI Approved :: Apache Software License', # https://pypi.org/classifiers
     description                   = 'Generic cloud provider zone outage and Kubernetes pod disruption simulations with specific support for Gardener',
-    long_description              = 'This package provides generic [`chaostoolkit`](https://chaostoolkit.org) modules to simulate *compute* and *network* outages for various cloud providers as well as *pod disruptions* in any Kubernetes cluster.\n\n' +
+    long_description              = 'This package provides generic [`chaostoolkit`](https://chaostoolkit.org) modules to simulate *compute* and *network* outages for various cloud providers as well as *pod disruptions* for any Kubernetes cluster.\n\n' +
                                     '<img src="https://raw.githubusercontent.com/gardener/gardener/master/logo/gardener.svg" width="16"/> [Gardener](https://github.com/gardener/gardener) users benefit from an additional module that leverages the generic modules, but exposes their functionality in the most simple, homogeneous, and secure way (no need to specify cloud provider credentials, cluster credentials, or filters explicitly; retrieves credentials and stores them in memory only).\n\n' +
                                     'Please check out the original repo [README](https://github.com/gardener/chaos-engineering/blob/main/readme.md) for more information.',
     long_description_content_type = 'text/markdown',
