@@ -10,5 +10,5 @@ chaos-engineering:
           inject_effective_version: True
         component_descriptor: ~
         release:
-          nextversion: 'bump_minor'
+          nextversion: 'bump_patch'
           release_on_github: True
