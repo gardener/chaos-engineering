@@ -20,6 +20,15 @@ Copyright: 2023 SAP SE or an SAP affiliate company and Gardener contributors
 License: Apache-2.0
 
 # --------------------------------------------------
+# source code (vsphere specifics)
+
+Files:
+  chaosgarden/vsphere/pchelper.py
+Source: https://github.com/dnaeon/py-vconnector/blob/master/src/vconnector/core.py (modified)
+Copyright: 2013-2015 Marin Atanasov Nikolov <dnaeon@gmail.com>
+License: BSD-2-Clause
+
+# --------------------------------------------------
 # documentation
 
 Files:
