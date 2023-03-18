@@ -31,7 +31,7 @@
                 "arguments": {
                     "mode": "total",                                                # keep `total` (default) or replace with `ingress` or `egress`
                     "zone": "${azure_zone}",                                        # can be inline, but we recommend variable substitution; field/var name free
-                    "filters": "${azure_filters}",                                  # can be inline, but we recommend variable substitution; field/var name free
+                    "filters": "${azure_filters}"                                   # can be inline, but we recommend variable substitution; field/var name free
                 }
             }
         }

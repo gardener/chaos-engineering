@@ -46,7 +46,7 @@
             "virtual_machines": {
                 "custom_attributes": {...},                           # replace with your custom attributes;             field name fixed
                 "resource_pools": [...],                              # replace with your resource pool(s) and/or...;    field name fixed
-                "clusters": [...],                                    # ...replace with your cluster(s) (at least one);  field name fixed
+                "clusters": [...]                                     # ...replace with your cluster(s) (at least one);  field name fixed
             }
         }
     },
@@ -55,7 +55,7 @@
             "vsphere_username": "...",                                # replace with your credentials; field name fixed
             "vsphere_password": "...",                                #    "
             "nsxt_username": "...",                                   #    "
-            "nsxt_password": "...",                                   #    "
+            "nsxt_password": "..."                                    #    "
         }
     }
 }

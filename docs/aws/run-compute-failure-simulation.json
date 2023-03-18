@@ -15,7 +15,7 @@
                     "min_runtime": 0,                                             # keep `0` (immediate) or replace with number of seconds instance must run at least
                     "max_runtime": 0,                                             # keep `0` (immediate) or replace with number of seconds instance may run at most
                     "zone": "${aws_zone}",                                        # can be inline, but we recommend variable substitution; field/var name free
-                    "filters": "${aws_filters}"                                   # can be inline, but we recommend variable substitution; field/var name free
+                    "filters": "${aws_filters}",                                  # can be inline, but we recommend variable substitution; field/var name free
                     "duration": 60                                                # replace with time in seconds this action shall run
                 }
             }

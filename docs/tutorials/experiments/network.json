@@ -1,0 +1,45 @@
+{
+    "title": "run-network-failure-simulation",
+    "description": "run-network-failure-simulation",
+    "method": [
+        {
+            "type": "action",
+            "name": "run-network-failure-simulation",
+            "provider": {
+                "type": "python",
+                "module": "chaosgarden.garden.actions",
+                "func": "run_cloud_provider_network_failure_simulation",
+                "arguments": {
+                    "mode": "total",
+                    "zone": 0,
+                    "duration": 60
+                }
+            }
+        }
+    ],
+    "rollbacks": [
+        {
+            "type": "action",
+            "name": "rollback-network-failure-simulation",
+            "provider": {
+                "type": "python",
+                "module": "chaosgarden.garden.actions",
+                "func": "rollback_cloud_provider_network_failure_simulation",
+                "arguments": {
+                    "mode": "total",
+                    "zone": 0
+                }
+            }
+        }
+    ],
+    "configuration": {
+        "garden_project": {
+            "type": "env",
+            "key": "GARDEN_PROJECT"
+        },
+        "garden_shoot": {
+            "type": "env",
+            "key": "GARDEN_SHOOT"
+        }
+    }
+}
