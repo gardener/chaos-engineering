@@ -10,6 +10,7 @@ from logzero import logger
 __lock = Lock()
 __threads : Dict[Thread, bool] = {}
 __in_termination = False
+__org_signal_handlers = None
 
 
 def is_terminated(thread):
@@ -21,11 +22,12 @@ def is_terminated(thread):
 
 def launch_thread(target, name = None, args = (), kwargs = None) -> Thread:
     with __lock:
-        if __in_termination:
-            return None
-        thread = Thread(target = target, name = name if name else target.__name__, args = args, kwargs = kwargs)
-        logger.info(f'Launching background thread {thread.name}.')
-        __threads[thread] = False
+        if not __in_termination:
+            thread = Thread(target = target, name = name if name else target.__name__, args = args, kwargs = kwargs)
+            logger.info(f'Launching background thread {thread.name}.')
+            __threads[thread] = False
+        else:
+            thread = Thread() # do not launch anything, but return proper `Thread`` object, so that consecutive calls such as `join()` pass without exception
         thread.start()
         return thread
 
@@ -69,15 +71,20 @@ def terminate_all_threads():
             logger.error(traceback.format_exc())
 
 def install_signal_handlers():
-    logger.info(f'Installing signal handlers to terminate all active background threads on involuntary signals (note that SIGKILL cannot be handled).')
-    signal.signal(signal.SIGTERM, signal_handler_called)
-    signal.signal(signal.SIGQUIT, signal_handler_called)
-    signal.signal(signal.SIGINT, signal_handler_called)
+    global __org_signal_handlers
+    if __org_signal_handlers == None:
+        logger.info(f'Installing signal handlers to terminate all active background threads on involuntary signals (note that SIGKILL cannot be handled).')
+        __org_signal_handlers = {}
+        __org_signal_handlers[signal.SIGTERM] = signal.signal(signal.SIGTERM, signal_handler_called)
+        __org_signal_handlers[signal.SIGQUIT] = signal.signal(signal.SIGQUIT, signal_handler_called)
+        __org_signal_handlers[signal.SIGINT]  = signal.signal(signal.SIGINT,  signal_handler_called)
 
 def signal_handler_called(signal_number = None, stack_frame = None): # signature implements signal.signal() handler interface
     if not __in_termination:
         logger.info(f'Signal handler invoked ({signal.Signals(signal_number).name}). Aborting now.')
         terminate_all_threads()
+    if callable(handler := __org_signal_handlers.get(signal_number, None)):
+        handler(signal_number, stack_frame) # call original handler if any, e.g. the `chaos`(toolkit) CLI
 
 def current_time():
     return datetime.now().strftime('%H:%M:%S')
