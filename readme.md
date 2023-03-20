@@ -44,6 +44,8 @@ Finally, there is a tiny additional module that is primarily useful for human in
 
 If you are new to [`chaostoolkit`](https://chaostoolkit.org) and its terminology and tools, please check out our [getting started tutorial](/docs/tutorials/getting_started.md). It will show you how to use this package in combination with the [`chaostoolkit`](https://chaostoolkit.org) [CLI](https://chaostoolkit.org/reference/usage/cli) and [experiment files](https://chaostoolkit.org/reference/api/experiment).
 
+Please check out our [Python scripting tutorial](/docs/tutorials/python_scripting.md), if you rather want to use the package directly in your chaos testing Python scripts.
+
 If you are an experienced [`chaostoolkit`](https://chaostoolkit.org) user, please read on to pick up only the essentials.
 
 ## Installation, Usage, and Configuration
