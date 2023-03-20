@@ -24,9 +24,9 @@ License: Apache-2.0
 
 Files:
   chaosgarden/vsphere/pchelper.py
-Source: https://github.com/dnaeon/py-vconnector/blob/master/src/vconnector/core.py (modified)
-Copyright: 2013-2015 Marin Atanasov Nikolov <dnaeon@gmail.com>
-License: BSD-2-Clause
+Source: https://github.com/vmware/pyvmomi-community-samples/blob/master/samples/tools/pchelper.py (modified)
+Copyright: Copyright 2014 VMware, Inc.
+License: Apache-2.0
 
 # --------------------------------------------------
 # documentation
