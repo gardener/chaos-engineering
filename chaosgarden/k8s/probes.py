@@ -341,30 +341,32 @@ def cleanup(cluster: Cluster):
             time.sleep(1)
 
 def read_events(cluster: Cluster):
+    retries = 0
     while True:
         try:
+            retries += 1
             return cluster.sanitize_result(cluster.client(API.EventsV1).list_event_for_all_namespaces(_request_timeout = 60).to_dict())
-        except ApiException as e:
-            logger.error(f'Reading events failed: {type(e)}: {e}')
-            # logger.error(traceback.format_exc())
-            time.sleep(5)
         except Exception as e:
             logger.error(f'Reading events failed: {type(e)}: {e}')
             # logger.error(traceback.format_exc())
-            raise e
+            if retries > 5:
+                raise e
+            else:
+                time.sleep(retries * 5)
 
 def read_custom_resources(cluster: Cluster, plural: str):
+    retries = 0
     while True:
         try:
+            retries += 1
             return cluster.sanitize_result(cluster.client(API.CustomResources).list_cluster_custom_object(group = 'chaos.gardener.cloud', version = 'v1', plural = plural, _request_timeout = 60))
-        except ApiException as e:
-            logger.error(f'Reading custom resources failed: {type(e)}: {e}')
-            # logger.error(traceback.format_exc())
-            time.sleep(5)
         except Exception as e:
             logger.error(f'Reading custom resources failed: {type(e)}: {e}')
             # logger.error(traceback.format_exc())
-            raise e
+            if retries > 5:
+                raise e
+            else:
+                time.sleep(retries * 5)
 
 def generate_metrics(cluster: Cluster, start_timestamp: int, stop_timestamp: int, successful_api_probe_heartbeats: List[Dict], failed_api_probe_heartbeats: List[Dict]):
     # read events and dump them
