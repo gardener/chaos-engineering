@@ -1,16 +1,16 @@
-azure-mgmt-network==22.2.0
-chaostoolkit==1.15.0
-chaostoolkit-lib==1.33.1
-chaostoolkit-aws==0.21.2
-chaostoolkit-azure==0.11.0
-chaostoolkit-google-cloud-platform==0.8.0
-chaostoolkit-kubernetes==0.26.3
-kubernetes==24.2.0
-Mako==1.2.4
-openstacksdk==1.0.1
-python-box==7.0.0
-PyYAML==6.0
-urllib3==1.26.14
+azure-mgmt-network>=22.2.0,<23
+chaostoolkit>=1.15.0,<2
+chaostoolkit-lib>=1.33.1,<2
+chaostoolkit-aws>=0.21.2,<1
+chaostoolkit-azure>=0.11.0,<1
+chaostoolkit-google-cloud-platform>=0.8.0,<1
+chaostoolkit-kubernetes>=0.26.3,<1
+kubernetes>=24.2.0
+Mako>=1.2.4,<2
+openstacksdk>=1.0.1,<2
+python-box>=7.0.0,<8
+PyYAML>=6.0,<7
+urllib3>=1.26.14,<2
 
 # The following packages are needed for VMware vSphere support:
 # - nsx-policy-python-sdk (developed and tested with 4.0.1.0.0)
