@@ -122,7 +122,7 @@ You can see how both failure simulations were launched in parallel and how one f
 <!-- BEGIN of section that must be kept in sync with sibling tutorial -->
 ## High Availability
 
-Developing highly available workload that can tolerate a zone outage unscathed is no trivial task. You can find more information on how to achieve this goal in our [best practices guide on high availability](https://github.com/gardener/gardener/blob/master/docs/usage/shoot_high_availability_best_practices.md).
+Developing highly available workload that can tolerate a zone outage is no trivial task. You can find more information on how to achieve this goal in our [best practices guide on high availability](https://github.com/gardener/gardener/blob/master/docs/usage/shoot_high_availability_best_practices.md).
 
 Thank you for your interest in Gardener chaos engineering and making your workload more resilient.
 

@@ -29,7 +29,7 @@ This module also provides [`chaostoolkit`](https://chaostoolkit.org) probes:
 
 ### Why?
 
-Implementing high availability that can even tolerate a zone outage unscathed is no trivial task. You can find more information on how to achieve this goal [here](https://github.com/gardener/gardener/blob/master/docs/usage/shoot_high_availability_best_practices.md). To put your solution to the test, this module will help you.
+Developing highly available workload that can tolerate a zone outage is no trivial task. You can find more information on how to achieve this goal [here](https://github.com/gardener/gardener/blob/master/docs/usage/shoot_high_availability_best_practices.md). To put your solution to the test, this module will help you.
 
 The probe on the other hand is targeting Kubernetes provider developers and output-qualification and puts cluster HA as such to the test, which requires automation as Kubernetes clusters may perform many functions in parallel.
 
