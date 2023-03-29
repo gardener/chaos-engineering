@@ -161,6 +161,7 @@ def run_network_failure_simulation(
     # prepare to block network traffic
     logger.info(f'Partitioning virtual networks with virtual machines matching `{virtual_machines_filter}` in zone {region}-{zone} ({mode}).')
     blocking_nsg = create_blocking_network_security_group(client, resource_group, region, zone, virtual_machines_filter, mode)
+    block_virtual_machines(client, resource_group, region, zone, virtual_machines_filter, blocking_nsg)
 
     # block VMs continuously until terminated
     terminator = Terminator(duration)

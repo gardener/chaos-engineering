@@ -169,6 +169,7 @@ def run_network_failure_simulation(
     logger.info(f'Partitioning networks matching `{networks_filter}` with instances matching `{instances_filter}` in zone {zone} ({mode} with instance {"restart" if requires_restart else "suspend/resume"}).')
     for network in list_networks(client, project, networks_filter):
         create_blocking_firewalls(client, project, zone, instances_filter, network['selfLink'], mode)
+    block_instances(client, project, zone, instances_filter, requires_restart)
 
     # block instances continuously until terminated
     terminator = Terminator(duration)

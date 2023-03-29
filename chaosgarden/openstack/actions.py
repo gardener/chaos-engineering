@@ -156,6 +156,7 @@ def run_network_failure_simulation(
     # prepare to block network traffic
     logger.info(f'Partitioning networks with servers matching {servers_filter} in zone {zone} ({mode}).')
     create_blocking_security_group(conn, zone, servers_filter, mode)
+    block_servers(conn, zone, servers_filter)
 
     # block servers continuously until terminated
     terminator = Terminator(duration)
