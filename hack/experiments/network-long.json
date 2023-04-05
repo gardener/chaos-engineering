@@ -1,0 +1,67 @@
+{
+    "title": "run-network-failure-simulation",
+    "description": "run-network-failure-simulation",
+    "method": [
+        {
+            "type": "action",
+            "name": "assess-filters-impact",
+            "provider": {
+                "type": "python",
+                "module": "chaosgarden.garden.actions",
+                "func": "assess_cloud_provider_filters_impact",
+                "arguments": {
+                    "zone": "${zone}"
+                }
+            }
+        },
+        {
+            "type": "action",
+            "name": "wait-for-confirmation",
+            "provider": {
+                "type": "python",
+                "module": "chaosgarden.human.actions",
+                "func": "wait_for"
+            }
+        },
+        {
+            "type": "action",
+            "name": "run-network-failure-simulation",
+            "provider": {
+                "type": "python",
+                "module": "chaosgarden.garden.actions",
+                "func": "run_cloud_provider_network_failure_simulation",
+                "arguments": {
+                    "mode": "total",
+                    "zone": "${zone}",
+                    "duration": -1
+                }
+            }
+        }
+    ],
+    "rollbacks": [
+        {
+            "type": "action",
+            "name": "rollback-network-failure-simulation",
+            "provider": {
+                "type": "python",
+                "module": "chaosgarden.garden.actions",
+                "func": "rollback_cloud_provider_network_failure_simulation",
+                "arguments": {
+                    "mode": "total",
+                    "zone": "${zone}"
+                }
+            }
+        }
+    ],
+    "configuration": {
+        "garden_project": {
+            "type": "env",
+            "key": "GARDEN_PROJECT"
+        },
+        "garden_shoot": {
+            "type": "env",
+            "key": "GARDEN_SHOOT"
+        },
+        "zone": 0
+    }
+}
