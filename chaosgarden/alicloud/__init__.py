@@ -54,7 +54,6 @@ class AliyunBot:
     def __send_request(self, request):
         
         the_request = copy.deepcopy(request)
-        # print(type(request).__name__)
         try_count = 0
         while True:
             try:
@@ -78,8 +77,6 @@ class AliyunBot:
 
     def __call_request_action(self, request):
         request.set_accept_format('json')
-        # if hasattr(request.__class__, 'set_ClientToken') and callable(getattr(request.__class__, 'set_ClientToken')):
-        #     request.set_ClientToken(uuid.uuid1())
         response_str = self.client.do_action_with_exception(request)
         response_str = response_str.decode()
         response_detail = json.loads(response_str)
@@ -118,7 +115,6 @@ class AliyunBot:
         if InsId:
             request.set_InstanceIds([InsId])
         request.set_PageSize(MAX_SIZE)
-        # request.set_MaxResults(MAX_SIZE)
         data_list = []
         cur_page = 1
         if resp := self.__send_request(request):
@@ -600,25 +596,6 @@ class AliyunBot:
         if orginal_acl == AclId:
             return True
 
-
-        # acl, err = self.get_network_acl(AclId=AclId)
-        # if err:
-        #     return False
-        # if acl is None:
-        #     return False
-        # if acl['Status'] != 'Available':
-        #     return False
-        
-        # bind_status = acl['BindVswitches'].get(VSwitchId) or 'UNBINDED'
-
-        # need_bind = True
-        # if bind_status in ['BINDED', 'BINDING']:
-        #     need_bind = False
-        # if bind_status == 'BINDED':
-        #     return True
-
-        # if need_bind and not self.__associate_network_acl(AclId, VSwitchId):
-        #     return False
         if not self.__associate_network_acl(AclId, VSwitchId):
             return False
         
@@ -650,24 +627,7 @@ class AliyunBot:
         cur_acl = vswitch['NetworkAclId']
         if cur_acl != AclId:
             return True
-        # acl, err = self.get_network_acl(AclId=AclId)
-        # if err:
-        #     return False
-        # if acl is None:
-        #     return False
-        # if acl['Status'] != 'Available':
-        #     return False
-        
-        # bind_status = acl['BindVswitches'].get(VSwitchId) or 'UNBINDED'
 
-        # need_unbind = True
-        # if bind_status in ['UNBINDED', 'UNBINDING']:
-        #     need_unbind = False
-        # if bind_status == 'UNBINDED':
-        #     return True
-
-        # if need_unbind and not self.__unassociate_network_acl(AclId, VSwitchId):
-        #     return False
         if not self.__unassociate_network_acl(AclId, VSwitchId):
             return False
         
