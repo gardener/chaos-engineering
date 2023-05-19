@@ -386,6 +386,15 @@ def resolve_cloud_provider_simulation(zone, configuration, secrets) -> Tuple[Cal
         secrets = {}
         b64decode_and_add(credentials, 'accessKeyID', secrets, 'aws_access_key_id')
         b64decode_and_add(credentials, 'secretAccessKey', secrets, 'aws_secret_access_key')
+    elif cloud_provider == 'alicloud':
+        filters = {
+            'instances': {'Tag-key': f'kubernetes.io/cluster/{shoot.status.technicalID}'},
+            'vpc': {'Name': f'shoot--{configuration.garden_project}--{configuration.garden_shoot}-vpc'}}
+        configuration = {
+            'ali_region': shoot.spec.region}
+        secrets = {}
+        b64decode_and_add(credentials, 'accessKeyID', secrets, 'ali_access_key')
+        b64decode_and_add(credentials, 'accessKeySecret', secrets, 'ali_secret_key')
     elif cloud_provider == 'azure':
         cloud = configuration.get('azure_cloud', 'AZURE_PUBLIC_CLOUD')
         filters = {
