@@ -17,6 +17,7 @@ Read more on how to simulate *compute* and *network* outages for these cloud pro
 - **Module: [`gcp`](/docs/gcp/readme.md)**
 - **Module: [`openstack`](/docs/openstack/readme.md)**
 - **Module: [`vsphere`](/docs/vsphere/readme.md)**
+- **Module: [`alicloud`](/docs/alicloud/readme.md)**
 
 The API, parameterization, and implementation is as homogeneous as possible across the different cloud providers, so that consumers of these packages have only minimal effort. However, if you are a Gardener user, please read on and use the [Gardener-specific module](#gardener) instead, which makes it even easier and safer for you.
 
