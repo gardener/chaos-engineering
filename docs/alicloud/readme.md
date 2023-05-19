@@ -1,4 +1,4 @@
-# **Module: `aws`**
+# **Module: `alicloud`**
 
 ## Purpose
 
