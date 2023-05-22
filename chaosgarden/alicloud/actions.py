@@ -189,19 +189,13 @@ def block_vpc(
         return
 
     # bind block acl to vswitch
-    failed_vswitch_list=[]
     for vswitch in need_op_vswitch_list:
         vswitch_id = vswitch["VSwitchId"]
-        if not alibot.replace_vswitch_acl_bind(VSwitchId=vswitch_id, AclId=block_acl_id):
-            failed_vswitch_list.append(vswitch_id)
-        else:
-            logger.info(f'bind block acl {block_acl_id} to vswitch {vswitch_id} successfully !')
-
-    for vswitch_id in failed_vswitch_list:
         if not alibot.replace_vswitch_acl_bind(VSwitchId=vswitch_id, AclId=block_acl_id):
             logger.warning(f'bind block acl {block_acl_id} to vswitch {vswitch_id} failed !')
         else:
             logger.info(f'bind block acl {block_acl_id} to vswitch {vswitch_id} successfully !')
+
 
     logger.info(f'All vswitches are binded to the block acl {block_acl_id}, block vpc {vpc_id} completed! ')
 
@@ -233,7 +227,6 @@ def unblock_vpc(
         if zone_vswitch_list:
             vswitch_list.extend(zone_vswitch_list)
     
-    failed_vswitch_list=[]
     for vswitch in vswitch_list:
         vswitch_id = vswitch["VSwitchId"]
         assoc_acl = vswitch["NetworkAclId"]
@@ -242,17 +235,10 @@ def unblock_vpc(
             original_acl_id = assocs_map.get(vswitch_id)
             if original_acl_id:
                 if not alibot.replace_vswitch_acl_bind(VSwitchId=vswitch_id, AclId=original_acl_id):
-                    failed_vswitch_list.append(vswitch_id)
+                    logger.warning(f'Reassociated {vswitch_id}  with original network acl {original_acl_id} failed!!')
                 else:
                     assocs_map.pop(vswitch_id, None)
                     logger.info(f'Reassociated {vswitch_id}  with original network acl {original_acl_id} successfully.')
-    for vswitch_id in failed_vswitch_list:
-        original_acl_id = assocs_map.get(vswitch_id)
-        if not alibot.replace_vswitch_acl_bind(VSwitchId=vswitch_id, AclId=original_acl_id):
-            logger.warning(f'Reassociated {vswitch_id}  with original network acl {original_acl_id} failed!!')
-        else:
-            assocs_map.pop(vswitch_id, None)
-            logger.info(f'Reassociated {vswitch_id}  with original network acl {original_acl_id} successfully.')
 
 
     new_assocs_str = json.dumps(assocs_map)
