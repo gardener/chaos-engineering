@@ -407,7 +407,7 @@ def resolve_cloud_provider_simulation(zone, configuration, secrets) -> Tuple[Cal
             'service_account_info': json.loads(base64.b64decode(credentials['serviceaccount.json']).decode('utf-8'))}
     elif cloud_provider == 'openstack':
         filters = {
-            'servers': {'metadata': 'kubernetes.io-cluster-shoot--core--chaos-os-2z'}}
+            'servers': {'metadata': f'kubernetes.io-cluster-{shoot.status.technicalID}'}}
         configuration = {
             'openstack_region': shoot.spec.region}
         secrets = {}
