@@ -24,7 +24,7 @@ VPC_TAG_NAME = 'gardener.cloud/chaos/vpc'
 ORIGINAL_NETWORK_ACL_ASSOCIATIONS_TAG_NAME = 'gardener.cloud/chaos/original-network-acl-associations'
 ASSUMED_COMPUTE_TERMINATION_TIME_IN_SECONDS = 60
 ASSUMED_COMPUTE_RESTART_TIME_IN_SECONDS = 90
-REUSE_ACL = True
+REUSE_ACL = False
 
 __all__ = [
     'assess_filters_impact',
