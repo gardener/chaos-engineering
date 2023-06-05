@@ -443,6 +443,9 @@ def rollback_network_failure_simulation(
     # rollback simulation gracefully
     logger.info(f'Unpartitioning VPCs matching {vpc_filter} in zone {zone} ({mode}).')
     instance_list, the_vpc = get_impact_instance_and_vpc(alibot, instance_tag_key, vpc_name, [zone])
-    unblock_vpc(alibot, [zone], the_vpc['VpcId'], mode)
+    if the_vpc:
+        unblock_vpc(alibot, [zone], the_vpc['VpcId'], mode)
+    else:
+        logger.info(f'No Vpc found named with {vpc_name}')
 
 
