@@ -37,6 +37,196 @@ __all__ = [
 
 
 
+#################################
+# Cloud Provider Filters Impact #
+#################################
+
+def assess_filters_impact(
+        zone: str = None,
+        filters: Dict[str, str] = None,
+        configuration: Configuration = None,
+        secrets: Secrets = None):
+    # input validation
+    validate_zone(zone)
+    filters = norm_filters(filters, ['instances', 'vpc'], [], [])
+    
+    vpc_filter = filters['vpc']
+    instance_filter = filters['instances']
+    vpc_name = vpc_filter['Name']
+    instance_tag_key = instance_filter['Tag-key']
+
+    alibot = AliyunBot(access_key=secrets['ali_access_key'], secret_key=secrets['ali_secret_key'], region=configuration['ali_region'])    
+    logger.info(f'Validating alibot credentials and listing probably impacted instances and/or networks with the given arguments {zone=} and {filters=}:')
+    
+    instance_list, the_vpc = get_impact_instance_and_vpc(alibot, instance_tag_key, vpc_name, [zone])
+    logger.info(f'{len(instance_list)} instance(s) would be impacted:')
+    for instance in sorted(instance_list, key = lambda instance: instance["InstanceId"]):
+        logger.info(f'- {instance["InstanceId"]}') 
+    if the_vpc is None:
+        logger.info(f'no VPC found')    
+    else:
+        logger.info('Follow VPC would be impacted:')
+        logger.info(f'- {the_vpc["VpcId"]}')
+        
+
+
+
+
+#############################################
+# Cloud Provider Compute Failure Simulation #
+#############################################
+
+def run_compute_failure_simulation_in_background(
+        mode: str = 'terminate',
+        min_runtime: int = 0,
+        max_runtime: int = 0,
+        zone: str = None,
+        filters: Dict[str, str] = None,
+        duration: int = 0,
+        configuration: Configuration = None,
+        secrets: Secrets = None) -> Thread:
+    return launch_thread(target = run_compute_failure_simulation, kwargs = locals())
+
+def run_compute_failure_simulation(
+        mode: str = 'terminate', # modes: 'terminate'|'restart'
+        min_runtime: int = 0,
+        max_runtime: int = 0,
+        zone: str = None,
+        filters: Dict[str, str] = None,
+        duration: int = 0,
+        configuration: Configuration = None,
+        secrets: Secrets = None):
+    # input validation
+    validate_duration(duration)
+    validate_mode(mode, ['terminate', 'restart'])
+    max_runtime = max(min_runtime, max_runtime)
+    validate_zone(zone)
+    filters = norm_filters(filters, ['instances', 'vpc'], [], [])
+    
+    vpc_filter = filters['vpc']
+    instance_filter = filters['instances']
+    vpc_name = vpc_filter['Name']
+    instance_tag_key = instance_filter['Tag-key']
+
+    alibot = AliyunBot(access_key=secrets['ali_access_key'], secret_key=secrets['ali_secret_key'], region=configuration['ali_region'])
+
+    # distinguish modes
+    if mode == 'terminate':
+        operation = alibot.delete_instance
+        reschedule_timedelta = timedelta(seconds = ASSUMED_COMPUTE_TERMINATION_TIME_IN_SECONDS) # back-off, in case termination fails silently
+    if mode == 'restart':
+        operation = alibot.reboot_instance
+        reschedule_timedelta = timedelta(seconds = ASSUMED_COMPUTE_RESTART_TIME_IN_SECONDS + random.randint(min_runtime, max_runtime)) # next restart
+
+
+    # mess up instances continuously until terminated
+    logger.info(f'Messing up instances matching {instance_filter} in zone {zone} ({mode} between {min_runtime}s and {max_runtime}s).')
+    schedule_by_id = {}
+    terminator = Terminator(duration)
+    while not terminator.is_terminated():
+        try:
+            instance_list, the_vpc = get_impact_instance_and_vpc(alibot, instance_tag_key, vpc_name, [zone])
+            for instance in instance_list:
+                instance_id = instance['InstanceId']
+                if instance_id not in schedule_by_id:
+                    schedule_by_id[instance_id] = datetime.now().astimezone() + timedelta(seconds = random.randint(min_runtime, max_runtime))
+                    logger.info(f'Scheduled virtual machine to {mode}: {instance_id} at {schedule_by_id[instance_id]}')
+                if datetime.now().astimezone() > schedule_by_id[instance_id]:
+                    schedule_by_id[instance_id] = datetime.now().astimezone() + reschedule_timedelta
+                    if not operation(InstId=instance_id):
+                        logger.error(f'Virtual machine:{instance_id} failed to {mode} ')
+                        schedule_by_id[instance_id] = datetime.now().astimezone() + timedelta(seconds = 1)
+        except Exception as e:
+            logger.error(f'Virtual machines failed to {mode}: {type(e)}: {e}')
+        finally:
+            time.sleep(2)
+
+
+
+
+
+#############################################
+# Cloud Provider Network Failure Simulation #
+#############################################
+
+def run_network_failure_simulation_in_background(
+        mode: str = 'total',
+        zone: str = None,
+        filters: Dict[str, str] = None,
+        duration: int = 0,
+        configuration: Configuration = None,
+        secrets: Secrets = None) -> Thread:
+    return launch_thread(target = run_network_failure_simulation, kwargs = locals())
+
+def run_network_failure_simulation(
+        mode: str = 'total', # modes: 'total'|'ingress'|'egress'
+        zone: str = None,
+        filters: Dict[str, str] = None,
+        duration: int = 0,
+        configuration: Configuration = None,
+        secrets: Secrets = None):
+    # rollback any left-overs from hard-aborted previous simulations
+    if not REUSE_ACL:
+        rollback_network_failure_simulation(mode, zone, filters, configuration, secrets)
+
+    # input validation
+    validate_duration(duration)
+    validate_mode(mode, ['total', 'ingress', 'egress'])
+    validate_zone(zone)
+    filters = norm_filters(filters, ['instances', 'vpc'], [], [])
+    vpc_filter = filters['vpc']
+    instance_filter = filters['instances']
+    vpc_name = vpc_filter['Name']
+    instance_tag_key = instance_filter['Tag-key']
+
+    alibot = AliyunBot(access_key=secrets['ali_access_key'], secret_key=secrets['ali_secret_key'], region=configuration['ali_region'])
+
+    
+
+    # block network traffic
+    logger.info(f'Partitioning VPCs matching {vpc_filter} in zone {zone} ({mode}).')
+    instance_list, the_vpc = get_impact_instance_and_vpc(alibot, instance_tag_key, vpc_name, [zone])
+    if the_vpc:
+        block_vpc(alibot, [zone], the_vpc['VpcId'], mode)
+
+    # wait until terminated
+    terminator = Terminator(duration)
+    while not terminator.is_terminated():
+        time.sleep(1)
+
+    # rollback
+    rollback_network_failure_simulation(mode, zone, filters, configuration, secrets)
+
+
+def rollback_network_failure_simulation(
+        mode: str = 'total', # modes: 'total'|'ingress'|'egress'
+        zone: str = None,
+        filters: Dict[str, str] = None,
+        configuration: Configuration = None,
+        secrets: Secrets = None):
+    # input validation
+    validate_mode(mode, ['total', 'ingress', 'egress'])
+    validate_zone(zone)
+    filters = norm_filters(filters, ['instances', 'vpc'], [], [])
+    vpc_filter = filters['vpc']
+    instance_filter = filters['instances']
+    vpc_name = vpc_filter['Name']
+    instance_tag_key = instance_filter['Tag-key']
+
+    alibot = AliyunBot(access_key=secrets['ali_access_key'], secret_key=secrets['ali_secret_key'], region=configuration['ali_region'])
+
+    # rollback simulation gracefully
+    logger.info(f'Unpartitioning VPCs matching {vpc_filter} in zone {zone} ({mode}).')
+    instance_list, the_vpc = get_impact_instance_and_vpc(alibot, instance_tag_key, vpc_name, [zone])
+    if the_vpc:
+        unblock_vpc(alibot, [zone], the_vpc['VpcId'], mode)
+    else:
+        logger.info(f'No Vpc found named with {vpc_name}')
+
+
+###########
+# Helpers #
+###########
 
 def list_instances_by_tagkey_and_zone(
     alibot: AliyunBot, 
@@ -261,191 +451,3 @@ def unblock_vpc(
     
     logger.info(f'unblock {vpc_id} completed! ')
     
-
-#################################
-# Cloud Provider Filters Impact #
-#################################
-
-def assess_filters_impact(
-        zone: str = None,
-        filters: Dict[str, str] = None,
-        configuration: Configuration = None,
-        secrets: Secrets = None):
-    # input validation
-    validate_zone(zone)
-    filters = norm_filters(filters, ['instances', 'vpc'], [], [])
-    
-    vpc_filter = filters['vpc']
-    instance_filter = filters['instances']
-    vpc_name = vpc_filter['Name']
-    instance_tag_key = instance_filter['Tag-key']
-
-    alibot = AliyunBot(access_key=secrets['ali_access_key'], secret_key=secrets['ali_secret_key'], region=configuration['ali_region'])    
-    logger.info(f'Validating alibot credentials and listing probably impacted instances and/or networks with the given arguments {zone=} and {filters=}:')
-    
-    instance_list, the_vpc = get_impact_instance_and_vpc(alibot, instance_tag_key, vpc_name, [zone])
-    logger.info(f'{len(instance_list)} instance(s) would be impacted:')
-    for instance in sorted(instance_list, key = lambda instance: instance["InstanceId"]):
-        logger.info(f'- {instance["InstanceId"]}') 
-    if the_vpc is None:
-        logger.info(f'no VPC found')    
-    else:
-        logger.info('Follow VPC would be impacted:')
-        logger.info(f'- {the_vpc["VpcId"]}')
-        
-
-
-
-
-#############################################
-# Cloud Provider Compute Failure Simulation #
-#############################################
-
-def run_compute_failure_simulation_in_background(
-        mode: str = 'terminate',
-        min_runtime: int = 0,
-        max_runtime: int = 0,
-        zone: str = None,
-        filters: Dict[str, str] = None,
-        duration: int = 0,
-        configuration: Configuration = None,
-        secrets: Secrets = None) -> Thread:
-    return launch_thread(target = run_compute_failure_simulation, kwargs = locals())
-
-def run_compute_failure_simulation(
-        mode: str = 'terminate', # modes: 'terminate'|'restart'
-        min_runtime: int = 0,
-        max_runtime: int = 0,
-        zone: str = None,
-        filters: Dict[str, str] = None,
-        duration: int = 0,
-        configuration: Configuration = None,
-        secrets: Secrets = None):
-    # input validation
-    validate_duration(duration)
-    validate_mode(mode, ['terminate', 'restart'])
-    max_runtime = max(min_runtime, max_runtime)
-    validate_zone(zone)
-    filters = norm_filters(filters, ['instances', 'vpc'], [], [])
-    
-    vpc_filter = filters['vpc']
-    instance_filter = filters['instances']
-    vpc_name = vpc_filter['Name']
-    instance_tag_key = instance_filter['Tag-key']
-
-    alibot = AliyunBot(access_key=secrets['ali_access_key'], secret_key=secrets['ali_secret_key'], region=configuration['ali_region'])
-
-    # distinguish modes
-    if mode == 'terminate':
-        operation = alibot.delete_instance
-        reschedule_timedelta = timedelta(seconds = ASSUMED_COMPUTE_TERMINATION_TIME_IN_SECONDS) # back-off, in case termination fails silently
-    if mode == 'restart':
-        operation = alibot.reboot_instance
-        reschedule_timedelta = timedelta(seconds = ASSUMED_COMPUTE_RESTART_TIME_IN_SECONDS + random.randint(min_runtime, max_runtime)) # next restart
-
-
-    # mess up instances continuously until terminated
-    logger.info(f'Messing up instances matching {instance_filter} in zone {zone} ({mode} between {min_runtime}s and {max_runtime}s).')
-    schedule_by_id = {}
-    terminator = Terminator(duration)
-    while not terminator.is_terminated():
-        try:
-            instance_list, the_vpc = get_impact_instance_and_vpc(alibot, instance_tag_key, vpc_name, [zone])
-            for instance in instance_list:
-                instance_id = instance['InstanceId']
-                if instance_id not in schedule_by_id:
-                    schedule_by_id[instance_id] = datetime.now().astimezone() + timedelta(seconds = random.randint(min_runtime, max_runtime))
-                    logger.info(f'Scheduled virtual machine to {mode}: {instance_id} at {schedule_by_id[instance_id]}')
-                if datetime.now().astimezone() > schedule_by_id[instance_id]:
-                    schedule_by_id[instance_id] = datetime.now().astimezone() + reschedule_timedelta
-                    if not operation(InstId=instance_id):
-                        logger.error(f'Virtual machine:{instance_id} failed to {mode} ')
-                        schedule_by_id[instance_id] = datetime.now().astimezone() + timedelta(seconds = 1)
-        except Exception as e:
-            logger.error(f'Virtual machines failed to {mode}: {type(e)}: {e}')
-        finally:
-            time.sleep(2)
-
-
-
-
-
-#############################################
-# Cloud Provider Network Failure Simulation #
-#############################################
-
-def run_network_failure_simulation_in_background(
-        mode: str = 'total',
-        zone: str = None,
-        filters: Dict[str, str] = None,
-        duration: int = 0,
-        configuration: Configuration = None,
-        secrets: Secrets = None) -> Thread:
-    return launch_thread(target = run_network_failure_simulation, kwargs = locals())
-
-def run_network_failure_simulation(
-        mode: str = 'total', # modes: 'total'|'ingress'|'egress'
-        zone: str = None,
-        filters: Dict[str, str] = None,
-        duration: int = 0,
-        configuration: Configuration = None,
-        secrets: Secrets = None):
-    # rollback any left-overs from hard-aborted previous simulations
-    if not REUSE_ACL:
-        rollback_network_failure_simulation(mode, zone, filters, configuration, secrets)
-
-    # input validation
-    validate_duration(duration)
-    validate_mode(mode, ['total', 'ingress', 'egress'])
-    validate_zone(zone)
-    filters = norm_filters(filters, ['instances', 'vpc'], [], [])
-    vpc_filter = filters['vpc']
-    instance_filter = filters['instances']
-    vpc_name = vpc_filter['Name']
-    instance_tag_key = instance_filter['Tag-key']
-
-    alibot = AliyunBot(access_key=secrets['ali_access_key'], secret_key=secrets['ali_secret_key'], region=configuration['ali_region'])
-
-    
-
-    # block network traffic
-    logger.info(f'Partitioning VPCs matching {vpc_filter} in zone {zone} ({mode}).')
-    instance_list, the_vpc = get_impact_instance_and_vpc(alibot, instance_tag_key, vpc_name, [zone])
-    if the_vpc:
-        block_vpc(alibot, [zone], the_vpc['VpcId'], mode)
-
-    # wait until terminated
-    terminator = Terminator(duration)
-    while not terminator.is_terminated():
-        time.sleep(1)
-
-    # rollback
-    rollback_network_failure_simulation(mode, zone, filters, configuration, secrets)
-
-
-def rollback_network_failure_simulation(
-        mode: str = 'total', # modes: 'total'|'ingress'|'egress'
-        zone: str = None,
-        filters: Dict[str, str] = None,
-        configuration: Configuration = None,
-        secrets: Secrets = None):
-    # input validation
-    validate_mode(mode, ['total', 'ingress', 'egress'])
-    validate_zone(zone)
-    filters = norm_filters(filters, ['instances', 'vpc'], [], [])
-    vpc_filter = filters['vpc']
-    instance_filter = filters['instances']
-    vpc_name = vpc_filter['Name']
-    instance_tag_key = instance_filter['Tag-key']
-
-    alibot = AliyunBot(access_key=secrets['ali_access_key'], secret_key=secrets['ali_secret_key'], region=configuration['ali_region'])
-
-    # rollback simulation gracefully
-    logger.info(f'Unpartitioning VPCs matching {vpc_filter} in zone {zone} ({mode}).')
-    instance_list, the_vpc = get_impact_instance_and_vpc(alibot, instance_tag_key, vpc_name, [zone])
-    if the_vpc:
-        unblock_vpc(alibot, [zone], the_vpc['VpcId'], mode)
-    else:
-        logger.info(f'No Vpc found named with {vpc_name}')
-
-
