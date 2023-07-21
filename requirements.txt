@@ -11,6 +11,9 @@ openstacksdk>=1.0.1,<2
 python-box>=7.0.0,<8
 PyYAML>=6.0,<7
 urllib3>=1.26.14,<2
+aliyun-python-sdk-core>=2.13.36,<3
+aliyun-python-sdk-ecs>=4.24.30,<5
+aliyun-python-sdk-vpc>=3.0.33,<4
 
 # The following packages are needed for VMware vSphere support:
 # - nsx-policy-python-sdk (developed and tested with 4.0.1.0.0)
