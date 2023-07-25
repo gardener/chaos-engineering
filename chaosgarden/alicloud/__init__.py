@@ -53,12 +53,12 @@ class AliyunBot:
 
     def __send_request(self, request):
         
-        the_request = copy.deepcopy(request)
+        the_request = copy.copy(request)
         try_count = 0
         while True:
             try:
                 try_count = try_count +1
-                the_request = copy.deepcopy(request)
+                the_request = copy.copy(request)
                 return self.__call_request_action(the_request)
                 
             except ServerException as se:

@@ -400,7 +400,7 @@ def unblock_vpc(
     # get blocking ACL
     exists_block_acl = get_or_create_block_acl(alibot, vpc_id, mode)
     if exists_block_acl is None:
-        logger.warning(f'no exists alc for mode {mode} in vpc {vpc_id}, unblock exited!!')
+        logger.info(f'no exists alc for mode {mode} in vpc {vpc_id}, unblock exited!!')
         return
 
     blocking_acl_id = exists_block_acl['NetworkAclId']
