@@ -1,14 +1,13 @@
 
 import time
 import json
-import uuid
-import copy
 
 from dataclasses import dataclass, field
 
 from aliyunsdkcore.client import AcsClient
 from aliyunsdkcore.acs_exception.exceptions import ClientException
 from aliyunsdkcore.acs_exception.exceptions import ServerException
+from aliyunsdkcore.request import AcsRequest
 
 from aliyunsdkecs.request.v20140526.DescribeInstancesRequest import DescribeInstancesRequest
 from aliyunsdkecs.request.v20140526.RebootInstanceRequest import RebootInstanceRequest
@@ -39,6 +38,10 @@ def string_array_equal(sorce_array, dest_array):
             return False
     return True
 
+def remove_dict_key(the_dict, key_name):
+    if the_dict and key_name in the_dict:
+        del the_dict[key_name]
+
 MAX_RETRY=5
 MAX_SIZE = 50
 @dataclass
@@ -51,15 +54,26 @@ class AliyunBot:
     def __post_init__(self):    
         self.client = AcsClient(self.access_key, self.secret_key, self.region)
 
+    def __clean_request(self, the_request: AcsRequest):
+        params = the_request.get_query_params()
+        remove_dict_key(params, 'Version')
+        remove_dict_key(params, 'Action')
+        remove_dict_key(params, 'Format')
+        remove_dict_key(params, 'RegionId')
+        remove_dict_key(params, 'AccessKeyId')
+        remove_dict_key(params, 'Timestamp')
+        remove_dict_key(params, 'SignatureMethod')
+        remove_dict_key(params, 'SignatureVersion')
+        remove_dict_key(params, 'SignatureNonce')
+        remove_dict_key(params, 'Signature')
+
     def __send_request(self, request):
-        
-        the_request = copy.deepcopy(request)
         try_count = 0
         while True:
             try:
                 try_count = try_count +1
-                the_request = copy.deepcopy(request)
-                return self.__call_request_action(the_request)
+                self.__clean_request(request)
+                return self.__call_request_action(request)
                 
             except ServerException as se:
                 
