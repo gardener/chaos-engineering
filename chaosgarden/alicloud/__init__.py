@@ -370,12 +370,14 @@ class AliyunBot:
         return vswitch_list, None
 
 
-    def __describe_network_acl(self, AclId=None, VpcId=None):
+    def __describe_network_acl(self, AclId=None, VpcId=None, AclName=None):
         request = DescribeNetworkAclsRequest()
         if AclId:
             request.set_NetworkAclId(AclId)
         if VpcId:
             request.set_VpcId(VpcId)
+        if AclName:
+            request.set_NetworkAclName(AclName)
         request.set_PageSize(MAX_SIZE)
         data_list = []
         cur_page = 1
@@ -426,7 +428,14 @@ class AliyunBot:
         if len(the_list) ==1:
             vswitch_data = self.__form_alc_data(the_list[0]) 
             return vswitch_data, None
-        return None, None 
+        return None, None
+    
+    def list_network_acl_by_name(self, AclName):
+        the_list = self.__describe_network_acl(AclName=AclName)
+        if the_list is None:
+            return None, 'call api fail'
+        acl_list = [self.__form_alc_data(acl) for acl in the_list]
+        return acl_list, None
 
     def __create_network_acl(self, VpcId, AclName=None):
         request = CreateNetworkAclRequest()

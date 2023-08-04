@@ -400,7 +400,8 @@ def unblock_vpc(
     # get blocking ACL
     exists_block_acl = get_or_create_block_acl(alibot, vpc_id, mode)
     if exists_block_acl is None:
-        logger.info(f'no exists alc for mode {mode} in vpc {vpc_id}, unblock exited!!')
+        clean_up_acl(alibot, vpc_id, mode)
+        logger.info(f'unable find exists alc for mode {mode} in vpc {vpc_id}, unblock exited!!')
         return
 
     blocking_acl_id = exists_block_acl['NetworkAclId']
@@ -445,9 +446,19 @@ def unblock_vpc(
         logger.warning(f'tag network acl failed !')
     
     # delete block acl
-    if not REUSE_ACL:
-        alibot.delete_network_acl(AclId=blocking_acl_id)
-        logger.info(f'acl {blocking_acl_id} deleted.')
+    clean_up_acl(alibot, vpc_id, mode)
     
     logger.info(f'unblock {vpc_id} completed! ')
     
+def clean_up_acl(
+    alibot: AliyunBot, 
+    vpc_id: str, 
+    mode: str):
+    AclName=f'block_acl_{mode}_for_{vpc_id}'
+    acl_list, err = alibot.list_network_acl_by_name(AclName)
+    if err is None:
+        for the_acl in acl_list:
+            if not REUSE_ACL or len(the_acl['Tags']) == 0:
+                acl_id = the_acl['NetworkAclId']
+                alibot.delete_network_acl(AclId=acl_id)
+                logger.info(f'acl {acl_id} deleted.')
