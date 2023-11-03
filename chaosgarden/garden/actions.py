@@ -313,6 +313,17 @@ def resolve_zones(spec: Dict) -> Set:
         zones |= set(worker.zones)
     return zones
 
+def resolve_pod_zones(spec: Dict) -> Set:
+    if spec.provider.type == 'azure':
+        zones = set()
+        for worker in spec.provider.workers:
+            for zone in worker.zones:
+                zones.add(f'{spec.region}-{zone}')
+        return zones
+    else:
+        return resolve_zones(spec)
+
+
 def resolve_zone(zone: Union[int, str], zones: Set) -> str:
     zones = sorted(zones)
     zones_as_string = ', '.join(zones)
@@ -343,7 +354,7 @@ def resolve_pod_simulation(target, zone, ignore_daemon_sets, pod_node_label_sele
             # zone cannot be resolved/validated, so we do not touch it
     else:
         kubeconfig = get_kubeconfig(garden_cluster = garden, project_namespace = project.spec.namespace, shoot_name = shoot.metadata.name)
-        zone       = resolve_zone(zone, resolve_zones(shoot.spec))
+        zone       = resolve_zone(zone, resolve_pod_zones(shoot.spec))
 
     # update selectors
     if zone:
