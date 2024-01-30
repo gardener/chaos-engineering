@@ -1,3 +1,4 @@
+import hashlib
 import random
 import time
 from collections import defaultdict
@@ -16,7 +17,7 @@ from chaosgarden.util import (norm_filters, validate_duration, validate_mode,
 from chaosgarden.util.terminator import Terminator
 from chaosgarden.util.threading import launch_thread
 
-ZONE_TAG_NAME = 'gardener.cloud/chaos/zone'
+ZONE_TAG_NAME_LAMBDA = lambda zone, filter: f'gardener.cloud/chaos/chaosgarden-block-{hashlib.md5(str(filter).encode("utf-8")).hexdigest()[:-16]}-{zone}'
 ORIGINAL_NETWORK_ACL_ASSOCIATIONS_TAG_NAME = 'gardener.cloud/chaos/original-network-acl-associations'
 ASSUMED_COMPUTE_TERMINATION_TIME_IN_SECONDS = 20
 ASSUMED_COMPUTE_RESTART_TIME_IN_SECONDS = 20
@@ -42,7 +43,7 @@ def assess_filters_impact(
         secrets: Secrets = None):
     # input validation
     validate_zone(zone)
-    filters = norm_filters(filters, ['instances', 'vpcs'], [], [])
+    filters = norm_filters(filters, ['instances', 'vpcs'], ['subnets'], [])
 
     # report impact the given zone and filters will have
     logger.info(f'Validating client credentials and listing probably impacted instances and/or networks with the given arguments {zone=} and {filters=}:')
@@ -89,7 +90,7 @@ def run_compute_failure_simulation(
     validate_mode(mode, ['terminate', 'restart'])
     max_runtime = max(min_runtime, max_runtime)
     validate_zone(zone)
-    filters = norm_filters(filters, ['instances'], ['vpcs'], [])
+    filters = norm_filters(filters, ['instances'], ['vpcs', 'subnets'], [])
     instances_filter = filters['instances']
     client = aws_client(resource_name = 'ec2', configuration = configuration, secrets = secrets)
 
@@ -156,14 +157,15 @@ def run_network_failure_simulation(
     validate_duration(duration)
     validate_mode(mode, ['total', 'ingress', 'egress'])
     validate_zone(zone)
-    filters = norm_filters(filters, ['vpcs'], ['instances'], [])
+    filters = norm_filters(filters, ['vpcs', 'subnets'], ['instances'], [])
     vpcs_filter = filters['vpcs']
+    subnets_filter = filters['subnets']
     client = aws_client(resource_name = 'ec2', configuration = configuration, secrets = secrets)
 
     # block network traffic
     logger.info(f'Partitioning VPCs matching {vpcs_filter} in zone {zone} ({mode}).')
     for vpc in client.describe_vpcs(Filters = vpcs_filter)['Vpcs']:
-        block_vpc(client, zone, vpc['VpcId'], mode)
+        block_vpc(client, zone, vpc['VpcId'], subnets_filter, mode)
 
     # wait until terminated
     terminator = Terminator(duration)
@@ -182,21 +184,22 @@ def rollback_network_failure_simulation(
     # input validation
     validate_mode(mode, ['total', 'ingress', 'egress'])
     validate_zone(zone)
-    filters = norm_filters(filters, ['vpcs'], ['instances'], [])
+    filters = norm_filters(filters, ['vpcs', 'subnets'], ['instances'], [])
     vpcs_filter = filters['vpcs']
+    subnets_filter = filters['subnets']
     client = aws_client(resource_name = 'ec2', configuration = configuration, secrets = secrets)
 
     # rollback simulation gracefully
     logger.info(f'Unpartitioning VPCs matching {vpcs_filter} in zone {zone} ({mode}).')
     for vpc in client.describe_vpcs(Filters = vpcs_filter)['Vpcs']:
-        unblock_vpc(client, zone, vpc['VpcId'])
+        unblock_vpc(client, zone, vpc['VpcId'], subnets_filter)
 
-def block_vpc(client, zone, vpc_id, mode):
+def block_vpc(client, zone, vpc_id, subnets_filter, mode):
     # get subnets in given zone for given VPC
-    subnets_filter = [
+    subnets_filter_amended = subnets_filter + [
         {'Name': 'availabilityZone', 'Values': [zone]},
         {'Name': 'vpc-id',           'Values': [vpc_id]}]
-    subnets = client.describe_subnets(Filters = subnets_filter)['Subnets']
+    subnets = client.describe_subnets(Filters = subnets_filter_amended)['Subnets']
     subnet_ids = [subnet['SubnetId'] for subnet in subnets]
 
     # get ACLs and their associations to the above subnets
@@ -209,7 +212,7 @@ def block_vpc(client, zone, vpc_id, mode):
     tags = [{
         'ResourceType': 'network-acl',
         'Tags': [
-            {'Key': ZONE_TAG_NAME, 'Value': zone},
+            {'Key': ZONE_TAG_NAME_LAMBDA(zone, subnets_filter), 'Value': '1'},
             {'Key': ORIGINAL_NETWORK_ACL_ASSOCIATIONS_TAG_NAME, 'Value': ';'.join([assoc['SubnetId'] + ':' + assoc['NetworkAclId'] for assoc in assocs])}]}]
     blocking_acl = client.create_network_acl(VpcId = vpc_id, TagSpecifications = tags)['NetworkAcl']
     blocking_acl_id = blocking_acl['NetworkAclId']
@@ -233,13 +236,12 @@ def block_vpc(client, zone, vpc_id, mode):
         client.replace_network_acl_association(AssociationId = assoc_id, NetworkAclId = blocking_acl_id)
         logger.info(f'Associated {subnet_id} (formerly via {assoc_id}) with blocking network access control list.')
 
-def unblock_vpc(client, zone, vpc_id):
+def unblock_vpc(client, zone, vpc_id, subnets_filter):
     # get blocking ACLs
     acls_filter = [
         {'Name': 'vpc-id',  'Values': [vpc_id]},
-        {'Name': 'tag-key', 'Values': [ZONE_TAG_NAME]},
-        {'Name': 'tag-key', 'Values': [ORIGINAL_NETWORK_ACL_ASSOCIATIONS_TAG_NAME]}]
-    blocking_acls = [blocking_acl for blocking_acl in client.describe_network_acls(Filters = acls_filter)['NetworkAcls'] if [tag['Value'] for tag in blocking_acl['Tags'] if tag['Key'] == ZONE_TAG_NAME][0] == zone]
+        {'Name': 'tag-key', 'Values': [ZONE_TAG_NAME_LAMBDA(zone, subnets_filter)]}]
+    blocking_acls = [blocking_acl for blocking_acl in client.describe_network_acls(Filters = acls_filter)['NetworkAcls']]
 
     # reassociate blocked subnets with original ACLs and then delete blocking ACLs
     for blocking_acl in blocking_acls:
