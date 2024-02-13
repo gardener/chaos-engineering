@@ -1,6 +1,5 @@
 # Chaos Engineering Tools for Gardener-Managed Clusters
-
-[![reuse compliant](https://reuse.software/badge/reuse-compliant.svg)](https://reuse.software/)
+[![REUSE status](https://api.reuse.software/badge/github.com/gardener/chaos-engineering)](https://api.reuse.software/info/github.com/gardener/chaos-engineering)
 
 ## Introduction
 

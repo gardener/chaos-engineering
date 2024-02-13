@@ -1,39 +1,32 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: Gardener Chaos Engineering
+Upstream-Name: Gardener chaos-engineering
 Upstream-Contact: The Gardener project <gardener@googlegroups.com>
 Source: https://github.com/gardener/chaos-engineering
 
 # --------------------------------------------------
 # source code
 
-Files:
-  .ci/*
-  .github/*
-  .gitignore
-  chaosgarden/*
-  hack/*
-  CODEOWNERS
-  requirements.txt
-  setup.py
-  VERSION
-Copyright: 2023 SAP SE or an SAP affiliate company and Gardener contributors
-License: Apache-2.0
-
-# --------------------------------------------------
-# source code (vsphere specifics)
-
-Files:
-  chaosgarden/vsphere/pchelper.py
-Source: https://github.com/vmware/pyvmomi-community-samples/blob/master/samples/tools/pchelper.py (modified)
-Copyright: Copyright (c) 2014-2021 VMware, Inc. All Rights Reserved.
+Files: *
+Copyright: 2017-2024 SAP SE or an SAP affiliate company and Gardener contributors
 License: Apache-2.0
 
 # --------------------------------------------------
 # documentation
 
-Files:
-  CONTRIBUTING.md
-  readme.md
-  docs/*
-Copyright: 2023 SAP SE or an SAP affiliate company and Gardener contributors
+Files: *.md
+Copyright: 2017-2024 SAP SE or an SAP affiliate company and Gardener contributors
 License: CC-BY-4.0
+
+# --------------------------------------------------
+# third-party
+
+# --- copied source code ---
+Files:
+  chaosgarden/vsphere/pchelper.py
+Copyright: 2014-2021 VMware, Inc. All Rights Reserved.
+License: Apache-2.0
+
+# --- vendor folder dependencies ---
+# Files:
+# Copyright:
+# License:
