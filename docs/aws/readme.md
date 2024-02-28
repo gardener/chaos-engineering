@@ -39,7 +39,7 @@ Module: [`chaosgarden.aws.actions`](/chaosgarden/aws/actions.py)
 
 ### Cloud Provider Filters
 
-Please consult your cloud provider documentation for the exact filter syntax (not interpreted by `chaosgarden`).
+Please consult your cloud provider documentation for the exact filter syntax (not interpreted by `chaosgarden`). The subnets filter, if provided, will be amended with the VPC and the zone, so do not add these conditions to it.
 
 ### Configuration
 

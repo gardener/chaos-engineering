@@ -400,7 +400,13 @@ def resolve_cloud_provider_simulation(zone, configuration, secrets) -> Tuple[Cal
     elif cloud_provider == 'aws':
         filters = {
             'instances': [{'Name': 'tag-key', 'Values': [f'kubernetes.io/cluster/{shoot.status.technicalID}']}],
-            'vpcs': [{'Name': 'tag-key', 'Values': [f'kubernetes.io/cluster/{shoot.status.technicalID}']}]}
+            'vpcs': [{'Name': 'tag-key', 'Values': [f'kubernetes.io/cluster/{shoot.status.technicalID}']}],
+            'subnets': [{'Name': 'tag-key', 'Values': [f'kubernetes.io/cluster/{shoot.status.technicalID}']}]}
+        if 'infrastructureConfig' in shoot.spec.provider and \
+            'networks' in shoot.spec.provider.infrastructureConfig and \
+            'vpc' in shoot.spec.provider.infrastructureConfig.networks and \
+            'id' in shoot.spec.provider.infrastructureConfig.networks.vpc:
+            filters['vpcs'] = [{'Name': 'vpc-id', 'Values': [shoot.spec.provider.infrastructureConfig.networks.vpc.id]}]
         configuration = {
             'aws_region': shoot.spec.region}
         secrets = {}
@@ -412,7 +418,11 @@ def resolve_cloud_provider_simulation(zone, configuration, secrets) -> Tuple[Cal
             'virtual_machines': f'where tags contains "kubernetes.io-cluster-{shoot.status.technicalID}"'}
         configuration = {
             'azure_region': shoot.spec.region,
-            'azure_resource_group': shoot.spec.provider.infrastructureConfig.resourceGroup.name if 'resourceGroup' in shoot.spec.provider.infrastructureConfig else shoot.status.technicalID}
+            'azure_resource_group': shoot.status.technicalID}
+        if 'infrastructureConfig' in shoot.spec.provider and \
+            'resourceGroup' in shoot.spec.provider.infrastructureConfig and \
+            'name' in shoot.spec.provider.infrastructureConfig.resourceGroup:
+            configuration['azure_resource_group'] = shoot.spec.provider.infrastructureConfig.resourceGroup.name
         b64decode_and_add(credentials, 'subscriptionID', configuration, 'azure_subscription_id')
         secrets = {'azure_cloud': cloud}
         b64decode_and_add(credentials, 'clientID', secrets, 'client_id')
@@ -420,8 +430,13 @@ def resolve_cloud_provider_simulation(zone, configuration, secrets) -> Tuple[Cal
         b64decode_and_add(credentials, 'tenantID', secrets, 'tenant_id')
     elif cloud_provider == 'gcp':
         filters = {
-            'instances': f'labels.name={configuration.garden_shoot} AND labels.node_kubernetes_io_role=node AND labels.worker_gardener_cloud_pool:*', # tags such as `tags.items=kubernetes-io-cluster-shoot--core--chaos-gcp-3z` using our technical ID do not work, see https://issuetracker.google.com/issues/120255780#comment14
+            'instances': f'labels.k8s-cluster-name={shoot.status.technicalID}',
             'networks': f'name={shoot.status.technicalID}'}
+        if 'infrastructureConfig' in shoot.spec.provider and \
+            'networks' in shoot.spec.provider.infrastructureConfig and \
+            'vpc' in shoot.spec.provider.infrastructureConfig.networks and \
+            'name' in shoot.spec.provider.infrastructureConfig.networks.vpc:
+            filters['networks'] = f'name={shoot.spec.provider.infrastructureConfig.networks.vpc.name}'
         configuration = None
         secrets = {
             'service_account_info': json.loads(base64.b64decode(credentials['serviceaccount.json']).decode('utf-8'))}
