@@ -165,7 +165,7 @@ spec:
         command:
         - 'bash'
         - '-c'
-        - 'pip install kubernetes==24.2.0 Flask==2.2.2; python -u /app/probe-pod.py'
+        - 'pip install kubernetes==28.1.0 Flask==2.3.3; python -u /app/probe-pod.py'
         readinessProbe:
           httpGet:
             scheme: 'HTTPS'
@@ -249,7 +249,7 @@ spec:
         command:
         - 'bash'
         - '-c'
-        - 'pip install kubernetes==24.2.0; python -u /app/suicidal-pod.py'
+        - 'pip install kubernetes==28.1.0; python -u /app/suicidal-pod.py'
         volumeMounts:
         - name: probe
           mountPath: '/app'
