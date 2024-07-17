@@ -474,7 +474,7 @@ def resolve_cloud_provider_simulation(zone, configuration, secrets) -> Tuple[Cal
                 region = r
                 break
         if not region:
-            raise ValueError(f'region {shoot.spec.region} not found in cloud profile')
+            raise ValueError(f'Region {shoot.spec.region} not found in cloud profile!')
         configuration = {
             'vsphere_vcenter_server': region.vsphereHost,
             'vsphere_vcenter_insecure': region.vsphereInsecureSSL,
