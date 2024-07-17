@@ -446,7 +446,14 @@ def resolve_cloud_provider_simulation(zone, configuration, secrets) -> Tuple[Cal
         configuration = {
             'openstack_region': shoot.spec.region}
         secrets = {}
-        b64decode_and_add(credentials, 'authURL', secrets, 'auth_url')
+        auth_url = None
+        for k in cloud_profile.spec.providerConfig.keystoneURLs:
+            if k.region == shoot.spec.region:
+                auth_url = k.url
+                break
+        if not auth_url:
+            raise ValueError(f'keystone URL for region {shoot.spec.region} not found in cloud profile')
+        secrets['auth_url'] = auth_url
         if 'applicationCredentialSecret' in credentials: # see https://docs.openstack.org/keystone/queens/user/application_credentials.html#using-application-credentials
             secrets['auth_type'] = 'v3applicationcredential'
             b64decode_and_add(credentials, 'applicationCredentialSecret', secrets, 'application_credential_secret')
