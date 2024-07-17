@@ -452,7 +452,7 @@ def resolve_cloud_provider_simulation(zone, configuration, secrets) -> Tuple[Cal
                 auth_url = k.url
                 break
         if not auth_url:
-            raise ValueError(f'keystone URL for region {shoot.spec.region} not found in cloud profile')
+            raise ValueError(f'Keystone URL for region {shoot.spec.region} not found in cloud profile!')
         secrets['auth_url'] = auth_url
         if 'applicationCredentialSecret' in credentials: # see https://docs.openstack.org/keystone/queens/user/application_credentials.html#using-application-credentials
             secrets['auth_type'] = 'v3applicationcredential'
