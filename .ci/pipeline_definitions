@@ -1,4 +1,9 @@
 chaos-engineering:
+  base_definition:
+    traits:
+      component_descriptor:
+        ocm_repository: europe-docker.pkg.dev/gardener-project/snapshots
+
   jobs:
     release:
       steps:
@@ -8,7 +13,8 @@ chaos-engineering:
         version:
           preprocess: 'finalize'
           inject_effective_version: True
-        component_descriptor: ~
+        component_descriptor:
+          ocm_repository: europe-docker.pkg.dev/gardener-project/releases
         release:
           nextversion: 'bump_patch'
           release_on_github: True
