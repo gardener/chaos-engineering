@@ -113,7 +113,7 @@ Now let's break 🪓 your cluster. Be advised that this experiment will be destr
 
 Being unreachable will trigger service endpoint and load balancer de-registration (when the node's grace period lapses) as well as eventually pod eviction and machine replacement (which will continue to fail under test). We won't run the experiment long enough for all of these effects to materialize, but the longer you run it, the more will happen, up to temporarily giving up/going into "back-off" for the affected worker pool in that zone. You will also see that the Kubernetes cluster autoscaler will try to create a new machine almost immediately, if pods are pending for the affected zone (which will initially fail under test, but may succeed later, which again depends on the runtime of the experiment and whether or not the cluster autoscaler goes into "back-off" or not).
 
-But for now, all of this doesn't matter as we want to start "small". You can later read up more on the various settings and effects in our [best practices guide on high availability](https://github.com/gardener/gardener/blob/master/docs/usage/shoot_high_availability_best_practices.md).
+But for now, all of this doesn't matter as we want to start "small". You can later read up more on the various settings and effects in our [best practices guide on high availability](https://github.com/gardener/gardener/blob/master/docs/usage/high-availability/shoot_high_availability_best_practices.md).
 
 Please create a new experiment file, this time with this content:
 
