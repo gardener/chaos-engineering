@@ -26,7 +26,7 @@ This module also provides [`chaostoolkit`](https://chaostoolkit.org) probes:
 
 ### Why?
 
-Developing highly available workload that can tolerate a zone outage is no trivial task. You can find more information on how to achieve this goal [here](https://github.com/gardener/gardener/blob/master/docs/usage/shoot_high_availability_best_practices.md). To put your solution to the test, this module will help you.
+Developing highly available workload that can tolerate a zone outage is no trivial task. You can find more information on how to achieve this goal [here](https://github.com/gardener/gardener/blob/master/docs/usage/high-availability/shoot_high_availability_best_practices.md). To put your solution to the test, this module will help you.
 
 The probe on the other hand is targeting Gardener developers and output-qualification and puts Gardener HA as such to the test, which requires automation as Gardener-managed clusters perform many functions in parallel.
 
