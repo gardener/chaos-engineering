@@ -381,8 +381,8 @@ def resolve_cloud_provider_simulation(zone, configuration, secrets) -> Tuple[Cal
     garden          = Cluster('garden', authenticator)
     project         = Box(garden.client(API.CustomResources).get_cluster_custom_object(name = configuration.garden_project, group = 'core.gardener.cloud', version = 'v1beta1', plural = 'projects'))
     shoot           = Box(garden.client(API.CustomResources).get_namespaced_custom_object(name = configuration.garden_shoot, namespace = project.spec.namespace, group = 'core.gardener.cloud', version = 'v1beta1', plural = 'shoots'))
-    secret_binding  = Box(garden.client(API.CustomResources).get_namespaced_custom_object(name = shoot.spec.secretBindingName, namespace = project.spec.namespace, group = 'core.gardener.cloud', version = 'v1beta1', plural = 'secretbindings'))
-    credentials     = Box(garden.client(API.CoreV1).read_namespaced_secret(name = secret_binding.secretRef.name, namespace = secret_binding.secretRef.namespace).data)
+    credential_binding  = Box(garden.client(API.CustomResources).get_namespaced_custom_object(name = shoot.spec.credentialsBindingName, namespace = project.spec.namespace, group = 'core.gardener.cloud', version = 'v1beta1', plural = 'credentialbindings'))
+    credentials     = Box(garden.client(API.CoreV1).read_namespaced_secret(name = credential_binding.secretRef.name, namespace = credential_binding.secretRef.namespace).data)
     cloud_profile   = Box(garden.client(API.CustomResources).get_cluster_custom_object(name = shoot.spec.cloudProfileName, group = 'core.gardener.cloud', version = 'v1beta1', plural = 'cloudprofiles'))
 
     # handle different cloud providers
