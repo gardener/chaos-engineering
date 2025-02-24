@@ -389,7 +389,7 @@ def resolve_cloud_provider_simulation(zone, configuration, secrets) -> Tuple[Cal
     # If secretBinding is not found, try to get the credentialsBinding
     binding         = Box(garden.client(API.CustomResources).get_namespaced_custom_object(name = shoot.spec.credentialsBindingName, namespace = project.spec.namespace, group = 'core.gardener.cloud', version = 'v1beta1', plural = 'credentialsbindings'))
     
-    credentials = Box(garden.client(API.CoreV1).read_namespaced_secret(name = binding.secretRef.name, namespace = binding.secretRef.namespace).data)
+    credentials     = Box(garden.client(API.CoreV1).read_namespaced_secret(name = binding.secretRef.name, namespace = binding.secretRef.namespace).data)
     cloud_profile   = Box(garden.client(API.CustomResources).get_cluster_custom_object(name = shoot.spec.cloudProfileName, group = 'core.gardener.cloud', version = 'v1beta1', plural = 'cloudprofiles'))
 
     # handle different cloud providers
