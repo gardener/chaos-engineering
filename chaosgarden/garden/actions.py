@@ -383,7 +383,7 @@ def resolve_cloud_provider_simulation(zone, configuration, secrets) -> Tuple[Cal
     shoot           = Box(garden.client(API.CustomResources).get_namespaced_custom_object(name = configuration.garden_shoot, namespace = project.spec.namespace, group = 'core.gardener.cloud', version = 'v1beta1', plural = 'shoots'))
 
     if 'secretBindingName' in shoot.spec:
-        binding     = Box(garden.client(API.CustomResources).get_namespaced_custom_object(name = shoot.spec.secretBindingName, namespace = project.spec.namespace,group = 'core.gardener.cloud', version = 'v1beta1', plural = 'secretbindings'))
+        binding     = Box(garden.client(API.CustomResources).get_namespaced_custom_object(name = shoot.spec.secretBindingName, namespace = project.spec.namespace, group = 'core.gardener.cloud', version = 'v1beta1', plural = 'secretbindings'))
     elif 'credentialsBindingName' in shoot.spec:
         binding     = Box(garden.client(API.CustomResources).get_namespaced_custom_object(name = shoot.spec.credentialsBindingName, namespace = project.spec.namespace, group = 'core.gardener.cloud', version = 'v1beta1', plural = 'credentialsbindings'))
     else:
