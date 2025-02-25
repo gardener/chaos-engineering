@@ -390,7 +390,6 @@ def resolve_cloud_provider_simulation(zone, configuration, secrets) -> Tuple[Cal
         credentials = Box(garden.client(API.CoreV1).read_namespaced_secret(name = binding.credentialsRef.name, namespace = binding.credentialsRef.namespace).data)    
     else:
         raise RuntimeError("Neither credentialsBindingName nor secretBindingName is present in shoot.spec")
-    
 
     cloud_profile   = Box(garden.client(API.CustomResources).get_cluster_custom_object(name = shoot.spec.cloudProfileName, group = 'core.gardener.cloud', version = 'v1beta1', plural = 'cloudprofiles'))
 
