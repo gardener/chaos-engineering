@@ -13,7 +13,7 @@ pip3 install --upgrade pip wheel setuptools twine
 python3 "${repo_dir}/setup.py" sdist bdist_wheel
 
 # retrieve PyPI credentials
-model_element_cmd="cli.py config model_element --cfg-type pypi --cfg-name gardener"
+model_element_cmd="gardener-ci config model_element --cfg-type pypi --cfg-name gardener"
 username="$(${model_element_cmd} --key credentials.username)"
 passwd="$(${model_element_cmd} --key credentials.passwd)"
 
