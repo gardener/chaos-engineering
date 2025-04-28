@@ -1,0 +1,14 @@
+name: CI (head-update)
+on:
+  push
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yaml
+    with:
+      mode: snapshot
+
+  post-build:
+    needs:
+      - build
+    uses: gardener/cc-utils/.github/workflows/post-build.yaml@master

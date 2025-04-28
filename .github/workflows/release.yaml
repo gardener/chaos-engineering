@@ -1,0 +1,49 @@
+name: Release
+on:
+  workflow_dispatch:
+    inputs:
+      release-to-pypi:
+        required: true
+        type: boolean
+        default: true
+        description: Whether to release to PYPI
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yaml
+    with:
+      mode: release
+
+  ocm-and-github-release-and-bump:
+    uses: gardener/cc-utils/.github/workflows/release.yaml@master
+    needs:
+      - build
+    secrets:
+      github-app-secret-key: ${{ secrets.GARDENER_GITHUB_ACTIONS_PRIVATE_KEY }}
+    with:
+      component-descriptor: ${{ needs.build.outputs.base-component-descriptor }}
+      release-commit-objects: ${{ needs.build.outputs.version-commit-objects }}
+      release-commit-target: branch
+      next-version: bump-patch
+
+  pypi-release:
+    if: ${{ inputs.release-to-pypi }}
+    runs-on: ubuntu-latest
+    name: Release to PYPI
+    needs:
+      - build
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Retrieve Distribution-Packages
+        uses: actions/download-artifact@v4
+        with:
+          name: distribution-packages
+      - name: prepare build-filesystem
+        run: |
+          tar xf distribution-packages.tar.gz
+          # let us not confuse pypi-publisher
+          rm -rf dist/blobs.d dist/ocm_resources.yaml
+      - name: publish to pypi
+        uses: pypa/gh-action-pypi-publish@release/v1

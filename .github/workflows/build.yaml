@@ -1,0 +1,117 @@
+name: Build
+
+on:
+  workflow_call:
+    inputs:
+      mode:
+        required: true
+        type: string
+        default: snapshot
+        description: |
+          the "mode" to use. Passed to `prepare`
+    outputs:
+      base-component-descriptor:
+        value: ${{ jobs.prepare.outputs.component-descriptor }}
+      version-commit-objects:
+        value: ${{ jobs.prepare.outputs.version-commit-objects }}
+
+
+jobs:
+  prepare:
+    uses: gardener/cc-utils/.github/workflows/prepare.yaml@master
+    with:
+      mode: ${{ inputs.mode }}
+
+  setuptools-version:
+    runs-on: ubuntu-latest
+    permissions: {}
+    needs:
+      - prepare
+    outputs:
+      setuptools-version: ${{ steps.version-setuptools.outputs.setuptools-version }}
+    steps:
+    - name: version-setuptools
+      id: version-setuptools
+      run: |
+        set -eu
+        version=${{ needs.prepare.outputs.version }}
+        if [[ "${version}" == *-* ]]; then
+          # version was non-final - add suffix compliant w/ pep-440
+          version="${version%%-*}-dev0"
+        fi
+        echo "setuptools-version=${version}" >> ${GITHUB_OUTPUT}
+
+  package:
+    runs-on: ubuntu-latest
+    needs:
+      - setuptools-version
+    steps:
+    - name: Install setuptools
+      run: |
+        pip3 install --root-user-action ignore \
+          setuptools \
+          pyyaml
+    - uses: actions/checkout@v4
+    - name: create distribution package
+      id: package
+      run: |
+        set -eu
+        version=${{ needs.setuptools-version.outputs.setuptools-version }}
+        echo "version: ${version}"
+        echo "${version}" > VERSION
+        pkg_dir=dist
+        mkdir -p ${pkg_dir}
+        pkg_dir="$(readlink -f dist)"
+        echo "pkgdir: ${pkg_dir}"
+        for path in \
+          setup.py \
+        ; do
+         echo "building distribution package from ${path}"
+         python3 ${path} \
+            bdist_wheel \
+            --dist-dir ${pkg_dir}
+         rm -rf build
+        done
+
+        echo "Built packages"
+        ls "${pkg_dir}"
+        blobs_dir="${pkg_dir}/blobs.d"
+        mkdir ${blobs_dir}
+        resources_file=resources.yaml
+        for package in \
+          chaosgarden \
+          ; do
+          path="$(echo $package | tr - _)-*"
+          prefix=dist
+          access_type='localBlob'
+          outf="${pkg_dir}/${package}.tar.gz"
+          tar cJf ${outf} -C ${pkg_dir} $(cd ${pkg_dir}; ls ${path})
+          mimetype=$(file -i ${outf} | cut -d: -f2 | cut -d' ' -f2-)
+          leng=$(stat -c"%s" ${outf})
+          digest="$(sha256sum ${outf} | cut -d' ' -f1)"
+          echo "\
+        - name: ${package}
+          version: ${version}
+          type: ${mimetype}
+          relation: local
+          access:
+            type: localBlob
+            localReference: sha256:${digest}
+            size: ${leng}
+            mediaType: ${mimetype}" \
+          >> ${resources_file}
+          mv ${outf} ${blobs_dir}/${digest}
+        done
+        cp "${resources_file}" dist/ocm_resources.yaml
+        echo "ocm_resources=dist/ocm_resources.yaml" >> "${GITHUB_OUTPUT}"
+        find "${pkg_dir}"
+        tar czf distribution-packages.tar.gz dist
+    - name: export-ocm-fragments
+      uses: gardener/cc-utils/.github/actions/export-ocm-fragments@master
+      with:
+        ocm-resources-file: dist/ocm_resources.yaml
+        blobs-directory: dist/blobs.d
+    - uses: actions/upload-artifact@v4
+      with:
+        name: distribution-packages
+        path: distribution-packages.tar.gz
