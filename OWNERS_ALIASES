@@ -1,0 +1,17 @@
+# See the OWNERS docs at https://go.k8s.io/owners
+
+aliases:
+  chaos-engineering-reviewers:
+  - MartinWeindel
+  - vlerenc
+  - dguendisch
+  - shaoyongfeng
+  - kevin-lacoo
+  - adenitiu
+  chaos-engineering-approvers:
+  - MartinWeindel
+  - vlerenc
+  - dguendisch
+  - shaoyongfeng
+  - kevin-lacoo
+  - adenitiu
