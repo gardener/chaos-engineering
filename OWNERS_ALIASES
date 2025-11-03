@@ -2,11 +2,8 @@
 
 aliases:
   chaos-engineering-reviewers:
-  - MartinWeindel
   - vlerenc
   - dguendisch
-  - shaoyongfeng
-  - kevin-lacoo
   - adenitiu
   chaos-engineering-approvers:
   - vlerenc
