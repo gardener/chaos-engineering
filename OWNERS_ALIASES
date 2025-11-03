@@ -1,0 +1,9 @@
+# See the OWNERS docs at https://go.k8s.io/owners
+
+aliases:
+  chaos-engineering-reviewers:
+  - vlerenc
+  - dguendisch
+  - adenitiu
+  chaos-engineering-approvers:
+  - vlerenc
