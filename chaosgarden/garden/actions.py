@@ -391,7 +391,10 @@ def resolve_cloud_provider_simulation(zone, configuration, secrets) -> Tuple[Cal
     else:
         raise RuntimeError("Neither credentialsBindingName nor secretBindingName is present in shoot.spec")
 
-    cloud_profile   = Box(garden.client(API.CustomResources).get_cluster_custom_object(name = shoot.spec.cloudProfileName, group = 'core.gardener.cloud', version = 'v1beta1', plural = 'cloudprofiles'))
+    if 'cloudProfile' not in shoot.spec:   
+        cloud_profile   = Box(garden.client(API.CustomResources).get_cluster_custom_object(name = shoot.spec.cloudProfileName, group = 'core.gardener.cloud', version = 'v1beta1', plural = 'cloudprofiles'))
+    else:
+        cloud_profile   = Box(garden.client(API.CustomResources).get_cluster_custom_object(name = shoot.spec.cloudProfile, group = 'core.gardener.cloud', version = 'v1beta1', plural = 'cloudprofiles'))
 
     # handle different cloud providers
     cloud_provider = shoot.spec.provider.type
