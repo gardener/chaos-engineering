@@ -384,26 +384,27 @@ def resolve_cloud_provider_simulation(zone, configuration, secrets) -> Tuple[Cal
 
     if 'secretBindingName' in shoot.spec:
         binding     = Box(garden.client(API.CustomResources).get_namespaced_custom_object(name = shoot.spec.secretBindingName, namespace = project.spec.namespace, group = 'core.gardener.cloud', version = 'v1beta1', plural = 'secretbindings'))
-        credentials = Box(garden.client(API.CoreV1).read_namespaced_secret(name = binding.secretRef.name, namespace = binding.secretRef.namespace).data)        
+        credentials = Box(garden.client(API.CoreV1).read_namespaced_secret(name = binding.secretRef.name, namespace = binding.secretRef.namespace).data)
     elif 'credentialsBindingName' in shoot.spec:
         binding     = Box(garden.client(API.CustomResources).get_namespaced_custom_object(name = shoot.spec.credentialsBindingName, namespace = project.spec.namespace, group = 'security.gardener.cloud', version = 'v1alpha1', plural = 'credentialsbindings'))
-        credentials = Box(garden.client(API.CoreV1).read_namespaced_secret(name = binding.credentialsRef.name, namespace = binding.credentialsRef.namespace).data)    
+        credentials = Box(garden.client(API.CoreV1).read_namespaced_secret(name = binding.credentialsRef.name, namespace = binding.credentialsRef.namespace).data)
     else:
         raise RuntimeError("Neither credentialsBindingName nor secretBindingName is present in shoot.spec")
 
     if 'cloudProfileName' in shoot.spec:
+        # deprecated way
         cloud_profile = Box(garden.client(API.CustomResources).get_cluster_custom_object(name = shoot.spec.cloudProfileName, group = 'core.gardener.cloud', version = 'v1beta1', plural = 'cloudprofiles'))
     elif 'cloudProfile' in shoot.spec:
+        # modern way, distinguish between namespaced and cluster-scoped cloud profiles
         cloud_profile_kind = shoot.spec.cloudProfile.get('kind', 'CloudProfile')
         cloud_profile_name = shoot.spec.cloudProfile.name
-
         if cloud_profile_kind == 'NamespacedCloudProfile':
             cloud_profile = Box(garden.client(API.CustomResources).get_namespaced_custom_object(name = cloud_profile_name, namespace = project.spec.namespace, group = 'core.gardener.cloud', version = 'v1beta1', plural = 'namespacedcloudprofiles'))
         else:
             cloud_profile = Box(garden.client(API.CustomResources).get_cluster_custom_object(name = cloud_profile_name, group = 'core.gardener.cloud', version = 'v1beta1', plural = 'cloudprofiles'))
     else:
         raise RuntimeError("Neither cloudProfileName nor cloudProfile is present in shoot.spec")
-    
+
     # handle different cloud providers
     cloud_provider = shoot.spec.provider.type
     zone = resolve_zone(zone, resolve_zones(shoot.spec))
