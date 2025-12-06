@@ -9,6 +9,9 @@ jobs:
       mode: snapshot
 
   post-build:
+    uses: gardener/cc-utils/.github/workflows/post-build.yaml@master
     needs:
       - build
-    uses: gardener/cc-utils/.github/workflows/post-build.yaml@master
+    permissions:
+      contents: write
+      id-token: write
