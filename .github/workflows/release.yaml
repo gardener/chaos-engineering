@@ -11,6 +11,9 @@ on:
 jobs:
   build:
     uses: ./.github/workflows/build.yaml
+    permissions:
+      contents: read
+      id-token: write
     with:
       mode: release
 
@@ -22,8 +25,6 @@ jobs:
       contents: write
       packages: write
       id-token: write
-    secrets:
-      github-app-secret-key: ${{ secrets.GARDENER_GITHUB_ACTIONS_PRIVATE_KEY }}
     with:
       component-descriptor: ${{ needs.build.outputs.base-component-descriptor }}
       release-commit-objects: ${{ needs.build.outputs.version-commit-objects }}
