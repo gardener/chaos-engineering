@@ -387,6 +387,14 @@ def resolve_cloud_provider_simulation(zone, configuration, secrets) -> Tuple[Cal
         credentials = Box(garden.client(API.CoreV1).read_namespaced_secret(name = binding.secretRef.name, namespace = binding.secretRef.namespace).data)
     elif 'credentialsBindingName' in shoot.spec:
         binding     = Box(garden.client(API.CustomResources).get_namespaced_custom_object(name = shoot.spec.credentialsBindingName, namespace = project.spec.namespace, group = 'security.gardener.cloud', version = 'v1alpha1', plural = 'credentialsbindings'))
+        if binding.credentialsRef.get('kind') == 'WorkloadIdentity':
+            raise RuntimeError(
+                f'Shoot {shoot.metadata.name} uses Workload Identity credentials, which cannot be '
+                f'resolved by this tool. The Workload Identity trust chain is between the Gardener '
+                f'OIDC issuer and the cloud provider, and cannot be leveraged by external clients. '
+                f'Please use the cloud provider-specific modules (e.g. chaosgarden.aws, '
+                f'chaosgarden.gcp, chaosgarden.azure) directly with explicit credentials instead '
+                f'of the chaosgarden.garden module.')
         credentials = Box(garden.client(API.CoreV1).read_namespaced_secret(name = binding.credentialsRef.name, namespace = binding.credentialsRef.namespace).data)
     else:
         raise RuntimeError("Neither credentialsBindingName nor secretBindingName is present in shoot.spec")

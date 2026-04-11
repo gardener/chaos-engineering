@@ -5,7 +5,7 @@
 
 This package provides [Gardener](https://github.com/gardener/gardener)-independent [`chaostoolkit`](https://chaostoolkit.org) modules to simulate *compute* and *network* outages for various cloud providers as well as *pod disruptions* for any Kubernetes cluster.
 
-<img src="https://raw.githubusercontent.com/gardener/gardener/master/logo/gardener.svg" width="16"/> [Gardener](https://github.com/gardener/gardener) users benefit from an [*additional* module](#gardener) that leverages the generic modules, but exposes their functionality in the most simple, homogeneous, and secure way (no need to specify cloud provider credentials, cluster credentials, or filters explicitly; retrieves credentials and stores them in memory only):
+<img src="https://raw.githubusercontent.com/gardener/gardener/master/logo/gardener.svg" width="16"/> [Gardener](https://github.com/gardener/gardener) users benefit from an [*additional* module](#gardener) that leverages the generic modules, but exposes their functionality in the most simple, homogeneous, and secure way (no need to specify cloud provider credentials, cluster credentials, or filters explicitly; retrieves credentials and stores them in memory only; note: shoots using [Workload Identity](https://github.com/gardener/gardener/blob/master/docs/usage/shoot/shoot-workload-identity.md) are not supported — use the cloud provider-specific modules with explicit credentials instead):
 
 ### Cloud Providers
 
@@ -30,7 +30,7 @@ The module supports powerful filter criteria like node labels, pod labels, pod m
 
 ### Gardener
 
-Whether you want to target cloud provider resources or pods, if you have a Gardener-managed cluster, this package is for you as it supports all of the above, but in the most simple, homogeneous, and secure way (no need to specify cloud provider credentials, cluster credentials, or filters explicitly; retrieves credentials and stores them in memory only):
+Whether you want to target cloud provider resources or pods, if you have a Gardener-managed cluster, this package is for you as it supports all of the above, but in the most simple, homogeneous, and secure way (no need to specify cloud provider credentials, cluster credentials, or filters explicitly; retrieves credentials and stores them in memory only; note: shoots using [Workload Identity](https://github.com/gardener/gardener/blob/master/docs/usage/shoot/shoot-workload-identity.md) are not supported — use the cloud provider-specific modules with explicit credentials instead):
 
 - **Module: [`garden`](/docs/garden/readme.md)**
 

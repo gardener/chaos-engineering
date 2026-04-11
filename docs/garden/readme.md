@@ -80,6 +80,12 @@ The following [secret](https://chaostoolkit.org/reference/api/experiment/#secret
 
 You can omit this field if `$KUBECONFIG` points to your `kubeconfig` file (default).
 
+### Workload Identity Limitation
+
+Shoots that use [Workload Identity](https://github.com/gardener/gardener/blob/master/docs/usage/shoot/shoot-workload-identity.md) instead of static credentials (i.e. the `CredentialsBinding` references a `WorkloadIdentity` rather than a `Secret`) are **not supported** by this module. The Workload Identity trust chain is between the Gardener OIDC issuer and the cloud provider and cannot be leveraged by external clients like this tool.
+
+If your shoot uses Workload Identity, please use the cloud provider-specific modules directly with explicit credentials instead.
+
 ## Examples
 
 - [Assess Filters Impact](/docs/garden/assess-filters-impact.json)
