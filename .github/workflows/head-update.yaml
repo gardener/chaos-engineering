@@ -12,7 +12,7 @@ jobs:
       mode: snapshot
 
   post-build:
-    uses: gardener/cc-utils/.github/workflows/post-build.yaml@master
+    uses: gardener/cc-utils/.github/workflows/post-build.yaml@v1
     needs:
       - build
     permissions:
