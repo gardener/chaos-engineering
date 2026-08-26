@@ -4,7 +4,7 @@ Property Collector helper module.
 Modified code from https://github.com/vmware/pyvmomi-community-samples/blob/master/samples/tools/pchelper.py,
 especially removing unneeded methods.
 
-Modifications Copyright SAP SE or an SAP affiliate company and Gardener contributors
+Modifications Copyright Copyright Contributors to the Gardener project
 """
 
 import pyVmomi
